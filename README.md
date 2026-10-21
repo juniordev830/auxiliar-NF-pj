@@ -2,6 +2,16 @@
 
 Um sistema completo e profissional para gerenciar receitas e despesas residenciais, com validações rigorosas e interface intuitiva.
 
+> **Estado do repositório:** esta versão publicada contém a documentação do projeto. O código da aplicação (pasta `ControladorGastos` e pasta `frontend`) precisa ser versionado para que a execução descrita abaixo seja reproduzível por outras pessoas.
+
+## ✅ Checklist para a próxima publicação
+
+- [ ] Adicionar o backend ASP.NET Core em `ControladorGastos/`.
+- [ ] Adicionar o frontend React em `frontend/`.
+- [ ] Incluir o arquivo de solução `.sln` e os projetos `.csproj`.
+- [ ] Adicionar um exemplo de configuração sem credenciais reais.
+- [ ] Confirmar as portas da API e do frontend na documentação.
+
 ## ✨ Características Principais
 
 ✅ **Cadastro de Pessoas** - Gerenciar membros da residência  
