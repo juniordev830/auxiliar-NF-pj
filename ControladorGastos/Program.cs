@@ -97,6 +97,10 @@ app.MapGet("/api/transacoes/totais/resumo", async (ControladorGastosContext db) 
     return Results.Ok(new { totalReceitas = receitas, totalDespesas = despesas, saldoGeral = receitas - despesas, porPessoa });
 });
 
+// A API ainda não tem autenticação; mantenha-a restrita ao loopback por padrão.
+app.Urls.Clear();
+app.Urls.Add("http://127.0.0.1:5000");
+
 app.Run();
 
 public sealed record PessoaInput(string? Nome, int? Idade);
