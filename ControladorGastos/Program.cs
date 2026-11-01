@@ -24,22 +24,22 @@ app.MapGet("/api/pessoas", async (ControladorGastosContext db) =>
         .Select(x => new { x.Id, x.Nome, x.Idade, x.DataCriacao })
         .ToListAsync()));
 
-app.MapPost("/api/pessoas", async (PessoaInput input, ControladorGastosContext db) =>
+app.MapPost("/api/pessoas", async Task<IResult> (PessoaInput input, ControladorGastosContext db) =>
 {
     var nome = input.Nome?.Trim();
     if (string.IsNullOrWhiteSpace(nome) || nome.Length > 100)
         return Results.BadRequest(new { error = "O nome deve ter entre 1 e 100 caracteres." });
-    if (input.Idade is < 0 or > 120)
+    if (input.Idade is null or < 0 or > 120)
         return Results.BadRequest(new { error = "A idade deve estar entre 0 e 120." });
 
-    var pessoa = new Pessoa { Nome = nome, Idade = input.Idade };
+    var pessoa = new Pessoa { Nome = nome, Idade = input.Idade.Value };
     db.Pessoas.Add(pessoa);
     await db.SaveChangesAsync();
     return Results.Created($"/api/pessoas/{pessoa.Id}",
         new { pessoa.Id, pessoa.Nome, pessoa.Idade, pessoa.DataCriacao });
 });
 
-app.MapDelete("/api/pessoas/{id:int}", async (int id, ControladorGastosContext db) =>
+app.MapDelete("/api/pessoas/{id:int}", async Task<IResult> (int id, ControladorGastosContext db) =>
 {
     var pessoa = await db.Pessoas.FindAsync(id);
     if (pessoa is null) return Results.NotFound(new { error = "Pessoa não encontrada." });
@@ -54,7 +54,7 @@ app.MapGet("/api/transacoes", async (ControladorGastosContext db) =>
         .Select(x => new { x.Id, x.Descricao, x.Valor, x.Tipo, x.PessoaId, PessoaNome = x.Pessoa.Nome, x.DataCriacao })
         .ToListAsync()));
 
-app.MapPost("/api/transacoes", async (TransacaoInput input, ControladorGastosContext db) =>
+app.MapPost("/api/transacoes", async Task<IResult> (TransacaoInput input, ControladorGastosContext db) =>
 {
     var descricao = input.Descricao?.Trim();
     if (string.IsNullOrWhiteSpace(descricao) || descricao.Length > 200)
@@ -99,5 +99,5 @@ app.MapGet("/api/transacoes/totais/resumo", async (ControladorGastosContext db) 
 
 app.Run();
 
-public sealed record PessoaInput(string? Nome, int Idade);
+public sealed record PessoaInput(string? Nome, int? Idade);
 public sealed record TransacaoInput(string? Descricao, decimal Valor, string? Tipo, int PessoaId);
