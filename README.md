@@ -1,45 +1,60 @@
 # Controle de Gastos Residenciais
 
-Projeto planejado para registrar receitas e despesas de uma residência, relacionar transações a pessoas e gerar resumos financeiros.
+API inicial executável para registrar pessoas da residência, receitas e despesas, com persistência local em SQLite.
 
-## Estado atual do repositório
+## Estado real do projeto
 
-**A versão atualmente publicada contém documentação, mas não inclui o código da aplicação descrito em alguns documentos antigos.** Portanto, as instruções de execução, telas e funcionalidades abaixo não podem ser reproduzidas a partir deste repositório até que os projetos de backend e frontend sejam versionados.
+O backend ASP.NET Core (.NET 8) está implementado nesta branch. A interface React ainda não está incluída; os documentos antigos descreviam uma aplicação planejada e não devem ser interpretados como prova de que o frontend existe.
 
-## Escopo funcional planejado
+## Requisitos
 
-- Cadastro de pessoas da residência.
-- Registro de receitas e despesas.
-- Regra de negócio para limitar o tipo de transação de menores de idade.
-- Relatórios de receitas, despesas e saldo.
-- Persistência de dados em banco local.
+- .NET SDK 8
 
-Esses itens representam o escopo documentado, não uma declaração de que a aplicação esteja atualmente implementada.
+## Executar
 
-## Stack planejada
+Na raiz do repositório:
 
-- Backend: ASP.NET Core / C#
-- Frontend: React e TypeScript
-- Persistência: SQLite
+```bash
+dotnet restore ControladorGastos/ControladorGastos.csproj
+dotnet run --project ControladorGastos/ControladorGastos.csproj
+```
 
-## Documentação disponível
+A API informa as rotas em `http://localhost:5000` ou na URL local exibida pelo ASP.NET Core. O banco `controlador-gastos.db` é criado localmente no primeiro início. O protótipo usa `EnsureCreated`; antes de produção, crie migrations versionadas e configure backup e proteção dos dados financeiros.
 
-- [DOCUMENTACAO.md](DOCUMENTACAO.md): descrição detalhada do projeto e das regras de negócio.
-- [GUIA_RAPIDO.md](GUIA_RAPIDO.md): referência resumida.
+## Endpoints
 
-## Próximos passos para tornar o projeto executável
+- `GET /api/health` — verificação de disponibilidade.
+- `GET /api/pessoas` — lista pessoas.
+- `POST /api/pessoas` — cria pessoa com `nome` e `idade` (0–120).
+- `DELETE /api/pessoas/{id}` — remove pessoa e suas transações.
+- `GET /api/transacoes` — lista transações com o nome da pessoa.
+- `POST /api/transacoes` — cria transação com `descricao`, `valor`, `tipo` (`RECEITA` ou `DESPESA`) e `pessoaId`.
+- `GET /api/transacoes/totais/resumo` — totais gerais e por pessoa.
 
-1. Adicionar o projeto backend com arquivo `.csproj` e código-fonte.
-2. Adicionar o frontend com `package.json` e código-fonte.
-3. Incluir exemplos de configuração sem segredos.
-4. Documentar os comandos reais de instalação, execução e testes.
-5. Implementar e testar as regras de negócio no backend; a validação visual sozinha não é suficiente.
-6. Atualizar este README após validar os comandos em uma instalação limpa.
+Exemplo para criar pessoa:
 
-## Segurança e privacidade
+```bash
+curl -X POST http://localhost:5000/api/pessoas \\
+  -H 'Content-Type: application/json' \\
+  -d '{"nome":"Ana","idade":30}'
+```
 
-Não publique planilhas reais de orçamento doméstico, nomes completos, informações financeiras pessoais, credenciais ou bancos de dados com informações identificáveis. Use apenas dados fictícios nos exemplos.
+Exemplo para criar despesa:
 
-## Autor
+```bash
+curl -X POST http://localhost:5000/api/transacoes \\
+  -H 'Content-Type: application/json' \\
+  -d '{"descricao":"Mercado","valor":125.90,"tipo":"DESPESA","pessoaId":1}'
+```
 
-João Junior — [GitHub](https://github.com/juniordev830)
+## Regras e limitações
+
+- Nome e descrição são validados no servidor.
+- O valor deve ser positivo; valores monetários são representados como decimal.
+- Menores de 18 anos não podem registrar receitas.
+- A remoção de uma pessoa remove suas transações relacionadas.
+- Esta versão não possui login/autorização nem frontend; não exponha a API na internet nem a use com dados financeiros reais até implementar esses controles.
+
+## Testes e CI
+
+O GitHub Actions restaura e compila o backend em cada pull request. Testes automatizados de integração e da regra de menores são a próxima etapa antes de considerar a API pronta para uso real.
