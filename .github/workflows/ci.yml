@@ -21,3 +21,21 @@ jobs:
         run: dotnet restore ControladorGastos/ControladorGastos.csproj
       - name: Build
         run: dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release --no-restore
+      - name: Smoke-test API validation
+        shell: bash
+        run: |
+          export ConnectionStrings__DefaultConnection="Data Source=${RUNNER_TEMP}/controle-gastos-smoke.db"
+          dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/api.log" 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:5000/api/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --show-error --fail http://127.0.0.1:5000/api/health >/dev/null
+          person_response=$(curl --silent --show-error --fail -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)
+          person_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$person_response")
+          invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Valor fracionado\",\"valor\":12.345,\"tipo\":\"DESPESA\",\"pessoaId\":$person_id}" http://127.0.0.1:5000/api/transacoes)
+          test "$invalid_status" = "400"
+          valid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Valor válido\",\"valor\":12.34,\"tipo\":\"DESPESA\",\"pessoaId\":$person_id}" http://127.0.0.1:5000/api/transacoes)
+          test "$valid_status" = "201"
