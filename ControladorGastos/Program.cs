@@ -111,11 +111,24 @@ app.MapDelete("/api/pessoas/{id:int}", async Task<IResult> (int id, ControladorG
     return Results.NoContent();
 });
 
-app.MapGet("/api/transacoes", async (ControladorGastosContext db) =>
-    Results.Ok(await db.Transacoes.AsNoTracking()
+app.MapGet("/api/transacoes", async Task<IResult> (int? page, int? limit, ControladorGastosContext db) =>
+{
+    // Keep the response as a JSON array for existing clients, but bound database
+    // reads and response sizes. Stable ID ordering breaks timestamp ties.
+    var selectedPage = page ?? 1;
+    var selectedLimit = limit ?? 50;
+    if (selectedPage < 1 || selectedPage > 100_000 || selectedLimit < 1 || selectedLimit > 100)
+        return Results.BadRequest(new { error = "Use page entre 1 e 100000 e limit entre 1 e 100." });
+
+    var rows = await db.Transacoes.AsNoTracking()
         .OrderByDescending(x => x.DataCriacao)
+        .ThenByDescending(x => x.Id)
+        .Skip((selectedPage - 1) * selectedLimit)
+        .Take(selectedLimit)
         .Select(x => new { x.Id, x.Descricao, x.Valor, x.Tipo, x.PessoaId, PessoaNome = x.Pessoa.Nome, x.DataCriacao })
-        .ToListAsync()));
+        .ToListAsync();
+    return Results.Ok(rows);
+});
 
 app.MapPost("/api/transacoes", async Task<IResult> (TransacaoInput input, ControladorGastosContext db) =>
 {
