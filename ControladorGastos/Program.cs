@@ -61,6 +61,8 @@ app.MapPost("/api/transacoes", async Task<IResult> (TransacaoInput input, Contro
         return Results.BadRequest(new { error = "A descrição deve ter entre 1 e 200 caracteres." });
     if (input.Valor <= 0 || input.Valor > 100_000_000m)
         return Results.BadRequest(new { error = "O valor deve ser positivo e não pode exceder 100.000.000." });
+    if (input.Valor != decimal.Round(input.Valor, 2, MidpointRounding.ToEven))
+        return Results.BadRequest(new { error = "O valor deve ter no máximo duas casas decimais." });
 
     var tipo = input.Tipo?.Trim().ToUpperInvariant();
     if (tipo is not ("RECEITA" or "DESPESA"))
