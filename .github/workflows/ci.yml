@@ -19,6 +19,14 @@ jobs:
           dotnet-version: "8.0.x"
       - name: Restore
         run: dotnet restore ControladorGastos/ControladorGastos.csproj
+      - name: Audit vulnerable NuGet packages
+        shell: bash
+        run: |
+          dotnet list ControladorGastos/ControladorGastos.csproj package --vulnerable --include-transitive | tee "$RUNNER_TEMP/nuget-vulnerabilities.txt"
+          if grep -q "has the following vulnerable packages" "$RUNNER_TEMP/nuget-vulnerabilities.txt"; then
+            echo "::error::NuGet vulnerability report contains vulnerable packages."
+            exit 1
+          fi
       - name: Build
         run: dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release --no-restore
       - name: Smoke-test API validation
