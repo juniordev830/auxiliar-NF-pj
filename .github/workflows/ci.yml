@@ -49,7 +49,7 @@ jobs:
           test "$valid_status" = "201"
           minor_response=$(curl --silent --show-error --fail -H 'Content-Type: application/json' -d '{"nome":"Menor","idade":17}' http://127.0.0.1:5000/api/pessoas)
           minor_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$minor_response")
-          minor_income_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\\"descricao\\":\\"Receita de menor\\",\\"valor\\":20.00,\\"tipo\\":\\"RECEITA\\",\\"pessoaId\\":$minor_id}" http://127.0.0.1:5000/api/transacoes)
+          minor_income_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Receita de menor\",\"valor\":20.00,\"tipo\":\"RECEITA\",\"pessoaId\":$minor_id}" http://127.0.0.1:5000/api/transacoes)
           test "$minor_income_status" = "400"
           delete_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -X DELETE "http://127.0.0.1:5000/api/pessoas/$person_id")
           test "$delete_status" = "204"
