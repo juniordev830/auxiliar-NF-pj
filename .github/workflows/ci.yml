@@ -55,3 +55,26 @@ jobs:
           test "$delete_status" = "204"
           remaining_transactions=$(curl --silent --show-error --fail http://127.0.0.1:5000/api/transacoes)
           python3 -c 'import json,sys; assert json.load(sys.stdin) == [], "Transações deveriam ser removidas junto com a pessoa"' <<< "$remaining_transactions"
+
+      - name: Smoke-test protected API access
+        shell: bash
+        env:
+          GASTOS_READ_TOKEN: "ci-read-token-for-tests-only-0123456789abcdef"
+          GASTOS_ADMIN_TOKEN: "ci-admin-token-for-tests-only-0123456789abcdef"
+        run: |
+          export ConnectionStrings__DefaultConnection="Data Source=${RUNNER_TEMP}/controle-gastos-auth.db"
+          dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/api-auth.log" 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:5000/api/health >/dev/null; then break; fi
+            sleep 1
+          done
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/health)" = "200"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/pessoas)" = "401"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Authorization: Bearer incorrect-token' http://127.0.0.1:5000/api/pessoas)" = "401"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/pessoas)" = "200"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $GASTOS_READ_TOKEN" -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)" = "403"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)" = "401"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)" = "201"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" http://127.0.0.1:5000/api/pessoas)" = "200"
