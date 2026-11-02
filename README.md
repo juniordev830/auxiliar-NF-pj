@@ -27,7 +27,7 @@ A API informa as rotas em `http://localhost:5000` ou na URL local exibida pelo A
 - `GET /api/pessoas` — lista pessoas.
 - `POST /api/pessoas` — cria pessoa com `nome` e `idade` (0–120).
 - `DELETE /api/pessoas/{id}` — remove pessoa e suas transações.
-- `GET /api/transacoes` — lista transações com o nome da pessoa.
+- `GET /api/transacoes?page=1&limit=50` — lista transações com o nome da pessoa, com paginação (página 1 a 100.000, limite 1 a 100, 50 por padrão). Retorna array JSON como antes, mas com limite de itens; entradas inválidas retornam HTTP 400.
 - `POST /api/transacoes` — cria transação com `descricao`, `valor`, `tipo` (`RECEITA` ou `DESPESA`) e `pessoaId`.
 - `GET /api/transacoes/totais/resumo` — totais gerais e por pessoa.
 
@@ -78,4 +78,4 @@ Sem essas duas variáveis, o protótipo continua **sem autenticação** e soment
 
 ## Testes e CI
 
-O GitHub Actions restaura, compila, audita dependências NuGet e realiza testes smoke da validação de API, da regra de menores, da exclusão em cascata e dos acessos anônimo, leitor e administrador. Testes de integração mais completos ainda são necessários antes de considerar a API pronta para produção.
+O GitHub Actions restaura, compila, audita dependências NuGet e realiza testes smoke da validação de API, paginação de transações, regra de menores, exclusão em cascata e acessos anônimo, leitor e administrador. Testes de integração mais completos ainda são necessários antes de considerar a API pronta para produção.
