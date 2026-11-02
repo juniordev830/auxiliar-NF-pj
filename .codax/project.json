@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_kind": "API ASP.NET Core / SQLite",
+  "entry_points": [
+    "ControladorGastos/Program.cs",
+    "ControladorGastos/Data/ControladorGastosContext.cs"
+  ],
+  "test_commands": [
+    "dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release"
+  ],
+  "review_focus": [
+    "Autorização por token e isolamento de usuários",
+    "Valores monetários, limites e transações"
+  ]
+}
