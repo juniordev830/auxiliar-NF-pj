@@ -111,16 +111,34 @@ app.MapDelete("/api/pessoas/{id:int}", async Task<IResult> (int id, ControladorG
     return Results.NoContent();
 });
 
-app.MapGet("/api/transacoes", async Task<IResult> (int? page, int? limit, ControladorGastosContext db) =>
+app.MapGet("/api/transacoes", async Task<IResult> (
+    int? page,
+    int? limit,
+    string? tipo,
+    int? pessoaId,
+    DateTime? de,
+    DateTime? ate,
+    ControladorGastosContext db) =>
 {
-    // Keep the response as a JSON array for existing clients, but bound database
-    // reads and response sizes. Stable ID ordering breaks timestamp ties.
+    // Keep the response as a JSON array for existing clients, with bounded reads.
     var selectedPage = page ?? 1;
     var selectedLimit = limit ?? 50;
     if (selectedPage < 1 || selectedPage > 100_000 || selectedLimit < 1 || selectedLimit > 100)
         return Results.BadRequest(new { error = "Use page entre 1 e 100000 e limit entre 1 e 100." });
 
-    var rows = await db.Transacoes.AsNoTracking()
+    var normalizedTipo = tipo?.Trim().ToUpperInvariant();
+    if (normalizedTipo is not null and not ("RECEITA" or "DESPESA"))
+        return Results.BadRequest(new { error = "O filtro tipo deve ser RECEITA ou DESPESA." });
+    if (de.HasValue && ate.HasValue && de.Value.Date > ate.Value.Date)
+        return Results.BadRequest(new { error = "O período inicial não pode ser posterior ao final." });
+
+    var query = db.Transacoes.AsNoTracking().AsQueryable();
+    if (normalizedTipo is not null) query = query.Where(x => x.Tipo == normalizedTipo);
+    if (pessoaId.HasValue) query = query.Where(x => x.PessoaId == pessoaId.Value);
+    if (de.HasValue) query = query.Where(x => x.DataCriacao >= de.Value.Date);
+    if (ate.HasValue) query = query.Where(x => x.DataCriacao < ate.Value.Date.AddDays(1));
+
+    var rows = await query
         .OrderByDescending(x => x.DataCriacao)
         .ThenByDescending(x => x.Id)
         .Skip((selectedPage - 1) * selectedLimit)
@@ -154,6 +172,44 @@ app.MapPost("/api/transacoes", async Task<IResult> (TransacaoInput input, Contro
     await db.SaveChangesAsync();
     return Results.Created($"/api/transacoes/{transacao.Id}",
         new { transacao.Id, transacao.Descricao, transacao.Valor, transacao.Tipo, transacao.PessoaId, PessoaNome = pessoa.Nome, transacao.DataCriacao });
+});
+
+app.MapGet("/api/transacoes/totais/mensal", async Task<IResult> (
+    int ano,
+    int mes,
+    ControladorGastosContext db) =>
+{
+    if (ano < 2000 || ano > 2200 || mes < 1 || mes > 12)
+        return Results.BadRequest(new { error = "Informe ano entre 2000 e 2200 e mes entre 1 e 12." });
+
+    var inicio = new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc);
+    var fim = inicio.AddMonths(1);
+    var transacoes = await db.Transacoes.AsNoTracking()
+        .Where(x => x.DataCriacao >= inicio && x.DataCriacao < fim)
+        .Select(x => new { x.Valor, x.Tipo, x.PessoaId, PessoaNome = x.Pessoa.Nome })
+        .ToListAsync();
+
+    var receitas = transacoes.Where(x => x.Tipo == "RECEITA").Sum(x => x.Valor);
+    var despesas = transacoes.Where(x => x.Tipo == "DESPESA").Sum(x => x.Valor);
+    var porPessoa = transacoes.GroupBy(x => new { x.PessoaId, x.PessoaNome })
+        .Select(g => new {
+            g.Key.PessoaId,
+            g.Key.PessoaNome,
+            Receitas = g.Where(x => x.Tipo == "RECEITA").Sum(x => x.Valor),
+            Despesas = g.Where(x => x.Tipo == "DESPESA").Sum(x => x.Valor),
+            Saldo = g.Where(x => x.Tipo == "RECEITA").Sum(x => x.Valor)
+                - g.Where(x => x.Tipo == "DESPESA").Sum(x => x.Valor)
+        }).OrderBy(x => x.PessoaNome).ToList();
+
+    return Results.Ok(new {
+        ano,
+        mes,
+        totalReceitas = receitas,
+        totalDespesas = despesas,
+        saldoGeral = receitas - despesas,
+        quantidade = transacoes.Count,
+        porPessoa
+    });
 });
 
 app.MapGet("/api/transacoes/totais/resumo", async (ControladorGastosContext db) =>
