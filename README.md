@@ -6,6 +6,14 @@ API inicial executável para registrar pessoas da residência, receitas e despes
 
 O backend ASP.NET Core (.NET 8) está implementado nesta branch. A interface React ainda não está incluída; os documentos antigos descreviam uma aplicação planejada e não devem ser interpretados como prova de que o frontend existe.
 
+## Política de acesso por residência (em desenvolvimento)
+
+A branch `feature/household-access-policy-20261104` adiciona um componente separado `PoliticaAcessoResidencia` para autorizar ações `Consultar`, `Registrar` e `Excluir` com base em uma **conta de usuário autenticada**, vínculo com residência e papel `Leitor`, `Editor` ou `Administrador`.
+
+Os testes unitários em `ControladorGastos.Tests` confirmam negação de acesso entre residências e para identidades ausentes. Execute `dotnet test ControladorGastos.Tests/ControladorGastos.Tests.csproj`.
+
+**Ainda não protege os endpoints atuais.** A política não foi conectada ao middleware de autenticação nem às consultas de banco. `Pessoa` não é uma conta de usuário: não confundir os dois conceitos. O modo local permanece como está e não deve ser exposto na internet com dados financeiros reais. O próximo desenvolvimento precisa criar contas, vínculos persistidos, migrações e autenticação validada antes de usar esta política nas rotas.
+
 ## Requisitos
 
 - .NET SDK 8
