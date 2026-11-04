@@ -5,6 +5,8 @@ using System.Security.Cryptography;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+ // A API recebe apenas registros pequenos; bloquear payloads gigantes evita gasto desnecessário de memória.
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 16 * 1024);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=controlador-gastos.db";
 builder.Services.AddDbContext<ControladorGastosContext>(options => options.UseSqlite(connectionString));
