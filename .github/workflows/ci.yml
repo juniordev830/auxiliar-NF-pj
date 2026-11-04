@@ -42,7 +42,7 @@ jobs:
           done
           curl --silent --show-error --fail http://127.0.0.1:5000/api/health >/dev/null
           curl --silent --show-error -D - -o /dev/null http://127.0.0.1:5000/api/pessoas |
-            tr -d '\r' | grep -iq '^Cache-Control: no-store
+            tr -d '\r' | grep -iq 'Cache-Control: no-store'
           person_response=$(curl --silent --show-error --fail -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)
           person_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$person_response")
           invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Valor fracionado\",\"valor\":12.345,\"tipo\":\"DESPESA\",\"pessoaId\":$person_id}" http://127.0.0.1:5000/api/transacoes)
@@ -112,7 +112,7 @@ jobs:
           test "$combined_headers_status" = "401"
           curl --silent --show-error -D - -o /dev/null \
             -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/transacoes |
-            tr -d '\r' | grep -iq '^Cache-Control: no-store
+            tr -d '\r' | grep -iq 'Cache-Control: no-store'
 
           person_response=$(curl --silent --show-error --fail -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)
           person_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$person_response")
