@@ -50,6 +50,7 @@ curl -X POST http://localhost:5000/api/transacoes \\
 ## Regras e limitações
 
 - Nome e descrição são validados no servidor.
+- O Kestrel limita o corpo de cada requisição a **16 KiB (16.384 bytes)**. Payloads maiores retornam HTTP 413; isto reduz abuso por requisições JSON excessivas, mas não substitui limites de taxa e autenticação individual.
 - O valor deve ser positivo; valores monetários são representados como decimal.
 - Menores de 18 anos não podem registrar receitas.
 - A remoção de uma pessoa remove suas transações relacionadas.
