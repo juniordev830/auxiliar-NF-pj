@@ -40,7 +40,7 @@ public static class PoliticaAcessoResidencia
             vinculo.ResidenciaId == residenciaDoRecursoId &&
             (acao switch
             {
-                AcaoResidencia.Consultar => true,
+                AcaoResidencia.Consultar => vinculo.Papel is PapelResidencia.Leitor or PapelResidencia.Editor or PapelResidencia.Administrador,
                 AcaoResidencia.Registrar => vinculo.Papel is PapelResidencia.Editor or PapelResidencia.Administrador,
                 AcaoResidencia.Excluir => vinculo.Papel == PapelResidencia.Administrador,
                 _ => false
