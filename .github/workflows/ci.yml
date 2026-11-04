@@ -29,6 +29,9 @@ jobs:
           fi
       - name: Build
         run: dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release --no-restore
+      - name: Test household authorization policy
+        run: dotnet test ControladorGastos.Tests/ControladorGastos.Tests.csproj --configuration Release
+
       - name: Smoke-test API validation
         shell: bash
         run: |
