@@ -74,8 +74,19 @@ Ambos precisam ter pelo menos 32 bytes e ser diferentes. Com a proteção ativa:
 - Envie o token em `Authorization: Bearer <seu-token>`. Exemplo: `curl -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/pessoas`.
 - Não publique, registre em logs, versione ou exponha os segredos em JavaScript do navegador.
 
+Para impedir a inicialização sem proteção por esquecimento de configuração, ative também `GASTOS_REQUIRE_AUTH=true` no ambiente. Nesse modo, a aplicação **falha ao iniciar** se os dois tokens não estiverem definidos, não forem suficientemente longos ou forem iguais:
+
+```bash
+export GASTOS_REQUIRE_AUTH=true
+export GASTOS_READ_TOKEN="$(openssl rand -hex 32)"
+export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
+dotnet run --project ControladorGastos/ControladorGastos.csproj
+```
+
+O parâmetro `GASTOS_REQUIRE_AUTH` aceita somente `true` ou `false`; outros valores impedem o início para evitar configuração acidental. Use esse modo ao exigir proteção local, mas **não o trate como substituto de login por usuário nem como autorização para publicar a API**.
+
 Sem essas duas variáveis, o protótipo continua **sem autenticação** e somente em `127.0.0.1`, para preservar o uso local existente. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
 
 ## Testes e CI
 
-O GitHub Actions restaura, compila, audita dependências NuGet e realiza testes smoke da validação de API, paginação de transações, regra de menores, exclusão em cascata e acessos anônimo, leitor e administrador. Testes de integração mais completos ainda são necessários antes de considerar a API pronta para produção.
+O GitHub Actions restaura, compila, audita dependências NuGet e realiza testes smoke da validação de API, paginação de transações, regra de menores, exclusão em cascata e acessos anônimo, leitor e administrador, além da falha de inicialização quando a autenticação obrigatória está sem tokens. Testes de integração mais completos ainda são necessários antes de considerar a API pronta para produção.
