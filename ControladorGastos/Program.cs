@@ -13,6 +13,14 @@ builder.Services.AddDbContext<ControladorGastosContext>(options => options.UseSq
 var readToken = builder.Configuration["GASTOS_READ_TOKEN"];
 var adminToken = builder.Configuration["GASTOS_ADMIN_TOKEN"];
 var tokenMode = !string.IsNullOrEmpty(readToken) || !string.IsNullOrEmpty(adminToken);
+var requireAuthSetting = builder.Configuration["GASTOS_REQUIRE_AUTH"];
+if (requireAuthSetting is not null && !bool.TryParse(requireAuthSetting, out _))
+    throw new InvalidOperationException("GASTOS_REQUIRE_AUTH deve ser true ou false.");
+var requireAuth = bool.TryParse(requireAuthSetting, out var required) && required;
+if (requireAuth && !tokenMode)
+    throw new InvalidOperationException(
+        "GASTOS_REQUIRE_AUTH=true exige GASTOS_READ_TOKEN e GASTOS_ADMIN_TOKEN configurados.");
+
 if (tokenMode && (
     string.IsNullOrWhiteSpace(readToken) ||
     string.IsNullOrWhiteSpace(adminToken) ||
