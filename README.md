@@ -25,8 +25,10 @@ A API informa as rotas em `http://localhost:5000` ou na URL local exibida pelo A
 
 - `GET /api/health` — verificação de disponibilidade.
 - `GET /api/pessoas` — lista pessoas.
+- `GET /api/pessoas/{id}` — consulta uma pessoa; retorna 404 caso não exista.
 - `POST /api/pessoas` — cria pessoa com `nome` e `idade` (0–120).
 - `DELETE /api/pessoas/{id}` — remove pessoa e suas transações.
+- `GET /api/transacoes/{id}` — consulta uma transação com nome da pessoa; retorna 404 caso não exista.
 - `GET /api/transacoes?page=1&limit=50` — lista transações com o nome da pessoa, com paginação (página 1 a 100.000, limite 1 a 100, 50 por padrão). Retorna array JSON como antes, mas com limite de itens; entradas inválidas retornam HTTP 400.
 - `POST /api/transacoes` — cria transação com `descricao`, `valor`, `tipo` (`RECEITA` ou `DESPESA`) e `pessoaId`.
 - `GET /api/transacoes/totais/resumo` — totais gerais e por pessoa.
