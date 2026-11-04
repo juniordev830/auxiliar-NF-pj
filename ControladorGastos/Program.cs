@@ -87,6 +87,16 @@ app.MapGet("/api/pessoas", async (ControladorGastosContext db) =>
         .Select(x => new { x.Id, x.Nome, x.Idade, x.DataCriacao })
         .ToListAsync()));
 
+app.MapGet("/api/pessoas/{id:int}", async Task<IResult> (int id, ControladorGastosContext db) =>
+{
+    var pessoa = await db.Pessoas.AsNoTracking()
+        .Where(x => x.Id == id)
+        .Select(x => new { x.Id, x.Nome, x.Idade, x.DataCriacao })
+        .FirstOrDefaultAsync();
+    if (pessoa is null) return Results.NotFound(new { error = "Pessoa não encontrada." });
+    return Results.Ok(pessoa);
+});
+
 app.MapPost("/api/pessoas", async Task<IResult> (PessoaInput input, ControladorGastosContext db) =>
 {
     var nome = input.Nome?.Trim();
@@ -146,6 +156,20 @@ app.MapGet("/api/transacoes", async Task<IResult> (
         .Select(x => new { x.Id, x.Descricao, x.Valor, x.Tipo, x.PessoaId, PessoaNome = x.Pessoa.Nome, x.DataCriacao })
         .ToListAsync();
     return Results.Ok(rows);
+});
+
+app.MapGet("/api/transacoes/{id:int}", async Task<IResult> (int id, ControladorGastosContext db) =>
+{
+    var transacao = await db.Transacoes.AsNoTracking()
+        .Where(x => x.Id == id)
+        .Select(x => new
+        {
+            x.Id, x.Descricao, x.Valor, x.Tipo, x.PessoaId,
+            PessoaNome = x.Pessoa.Nome, x.DataCriacao
+        })
+        .FirstOrDefaultAsync();
+    if (transacao is null) return Results.NotFound(new { error = "Transação não encontrada." });
+    return Results.Ok(transacao);
 });
 
 app.MapPost("/api/transacoes", async Task<IResult> (TransacaoInput input, ControladorGastosContext db) =>
