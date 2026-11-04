@@ -72,6 +72,8 @@ Ambos precisam ter pelo menos 32 bytes e ser diferentes. Com a proteção ativa:
 - O token de administração permite leitura, criação e exclusão.
 - Requisições sem token válido retornam **401**; um token de leitura tentando escrever retorna **403**.
 - Envie o token em `Authorization: Bearer <seu-token>`. Exemplo: `curl -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/pessoas`.
+- Envie somente um cabeçalho `Authorization`. Cabeçalhos duplicados, valores combinados e valores muito longos são rejeitados.
+- As respostas de dados em `/api/*` recebem `Cache-Control: no-store`, inclusive no modo local, para evitar armazenamento em cache de informações financeiras.
 - Não publique, registre em logs, versione ou exponha os segredos em JavaScript do navegador.
 
 Para impedir a inicialização sem proteção por esquecimento de configuração, ative também `GASTOS_REQUIRE_AUTH=true` no ambiente. Nesse modo, a aplicação **falha ao iniciar** se os dois tokens não estiverem definidos, não forem suficientemente longos ou forem iguais:
