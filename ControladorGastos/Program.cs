@@ -43,6 +43,17 @@ static bool TokenMatches(string? provided, string expected)
 
 var app = builder.Build();
 
+// Evita que navegadores e proxies armazenem dados financeiros, mesmo no modo local.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api") &&
+        !context.Request.Path.Equals("/api/health", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Headers["Cache-Control"] = "no-store";
+    }
+    await next(context);
+});
+
 if (tokenMode)
 {
     app.Use(async (context, next) =>
@@ -54,7 +65,17 @@ if (tokenMode)
             return;
         }
 
-        var authHeader = context.Request.Headers.Authorization.ToString();
+        // Rejeita cabeçalhos duplicados, combinados ou excessivamente longos.
+        // Proxies podem interpretar Authorization múltiplo de forma diferente.
+        var headerValues = context.Request.Headers.Authorization;
+        if (headerValues.Count != 1 || headerValues[0] is not { } authHeader ||
+            authHeader.Length > 8192 || authHeader.Contains(','))
+        {
+            context.Response.Headers["WWW-Authenticate"] = "Bearer";
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsJsonAsync(new { error = "Cabeçalho Authorization inválido." });
+            return;
+        }
         var bearer = authHeader.StartsWith("Bearer ", StringComparison.Ordinal)
             ? authHeader["Bearer ".Length..] : null;
         var isAdmin = TokenMatches(bearer, adminToken!);
