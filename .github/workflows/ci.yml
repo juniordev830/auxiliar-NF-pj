@@ -64,9 +64,24 @@ jobs:
           remaining_transactions=$(curl --silent --show-error --fail http://127.0.0.1:5000/api/transacoes)
           python3 -c 'import json,sys; assert json.load(sys.stdin) == [], "Transações deveriam ser removidas junto com a pessoa"' <<< "$remaining_transactions"
 
+      - name: Fail closed when required auth is missing
+        shell: bash
+        env:
+          GASTOS_REQUIRE_AUTH: "true"
+          GASTOS_READ_TOKEN: ""
+          GASTOS_ADMIN_TOKEN: ""
+        run: |
+          set +e
+          dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/required-auth-startup.log" 2>&1
+          exit_code=$?
+          set -e
+          test "$exit_code" -ne 0
+          grep -q 'GASTOS_REQUIRE_AUTH=true' "${RUNNER_TEMP}/required-auth-startup.log"
+
       - name: Smoke-test protected API access
         shell: bash
         env:
+          GASTOS_REQUIRE_AUTH: "true"
           GASTOS_READ_TOKEN: "ci-read-token-for-tests-only-0123456789abcdef"
           GASTOS_ADMIN_TOKEN: "ci-admin-token-for-tests-only-0123456789abcdef"
         run: |
