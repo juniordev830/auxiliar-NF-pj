@@ -61,6 +61,24 @@ public sealed class PoliticaAcessoResidenciaTests
     }
 
     [Fact]
+    public void PapelInvalidoNaoAutorizaNemLeitura()
+    {
+        var vinculos = new[]
+        {
+            new VinculoResidencia(UsuarioA, ResidenciaA, (PapelResidencia)999)
+        };
+        Assert.False(PoliticaAcessoResidencia.Permite(
+            UsuarioA, ResidenciaA, AcaoResidencia.Consultar, vinculos));
+    }
+
+    [Fact]
+    public void AcaoDesconhecidaNaoEAutorizada()
+    {
+        Assert.False(PoliticaAcessoResidencia.Permite(
+            UsuarioA, ResidenciaA, (AcaoResidencia)999, Vinculos));
+    }
+
+    [Fact]
     public void IdentidadeSemVinculoNaoTemPermissao()
     {
         Assert.False(PoliticaAcessoResidencia.Permite(UsuarioA, ResidenciaA, AcaoResidencia.Consultar, []));
