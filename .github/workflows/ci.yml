@@ -43,10 +43,17 @@ jobs:
           curl --silent --show-error --fail http://127.0.0.1:5000/api/health >/dev/null
           person_response=$(curl --silent --show-error --fail -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)
           person_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$person_response")
+          person_detail=$(curl --silent --show-error --fail "http://127.0.0.1:5000/api/pessoas/$person_id")
+          python3 -c 'import json,sys; item=json.load(sys.stdin); assert item["nome"]=="Ana" and item["idade"]==30' <<< "$person_detail"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/pessoas/999999)" = "404"
           invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Valor fracionado\",\"valor\":12.345,\"tipo\":\"DESPESA\",\"pessoaId\":$person_id}" http://127.0.0.1:5000/api/transacoes)
           test "$invalid_status" = "400"
           valid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Valor válido\",\"valor\":12.34,\"tipo\":\"DESPESA\",\"pessoaId\":$person_id}" http://127.0.0.1:5000/api/transacoes)
           test "$valid_status" = "201"
+          transaction_id=$(curl --silent --show-error --fail 'http://127.0.0.1:5000/api/transacoes?page=1&limit=1' | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["id"])')
+          transaction_detail=$(curl --silent --show-error --fail "http://127.0.0.1:5000/api/transacoes/$transaction_id")
+          python3 -c 'import json,sys; item=json.load(sys.stdin); assert item["descricao"]=="Valor válido" and item["pessoaNome"]=="Ana"' <<< "$transaction_detail"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/transacoes/999999)" = "404"
           first_page=$(curl --silent --show-error --fail 'http://127.0.0.1:5000/api/transacoes?page=1&limit=1')
           python3 -c 'import json,sys; rows=json.load(sys.stdin); assert isinstance(rows,list) and len(rows)==1' <<< "$first_page"
           second_page=$(curl --silent --show-error --fail 'http://127.0.0.1:5000/api/transacoes?page=2&limit=1')
@@ -61,6 +68,8 @@ jobs:
           test "$minor_income_status" = "400"
           delete_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -X DELETE "http://127.0.0.1:5000/api/pessoas/$person_id")
           test "$delete_status" = "204"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:5000/api/pessoas/$person_id")" = "404"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:5000/api/transacoes/$transaction_id")" = "404"
           remaining_transactions=$(curl --silent --show-error --fail http://127.0.0.1:5000/api/transacoes)
           python3 -c 'import json,sys; assert json.load(sys.stdin) == [], "Transações deveriam ser removidas junto com a pessoa"' <<< "$remaining_transactions"
 
@@ -80,6 +89,8 @@ jobs:
           done
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/health)" = "200"
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/pessoas)" = "401"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/pessoas/1)" = "401"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:5000/api/transacoes/1)" = "401"
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Authorization: Bearer incorrect-token' http://127.0.0.1:5000/api/pessoas)" = "401"
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/pessoas)" = "200"
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' -H "Authorization: Bearer $GASTOS_READ_TOKEN" -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)" = "403"
