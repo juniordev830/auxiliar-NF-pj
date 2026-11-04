@@ -2,9 +2,9 @@ name: Controle de Gastos CI
 
 on:
   push:
-    branches: [main, feature/household-access-persistence-20261104]
+    branches: [main]
   pull_request:
-    branches: [main, feature/household-access-policy-20261104]
+    branches: ['**']
 
 permissions:
   contents: read
