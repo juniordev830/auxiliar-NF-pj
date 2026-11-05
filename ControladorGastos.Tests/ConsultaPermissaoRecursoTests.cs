@@ -114,13 +114,15 @@ public sealed class ConsultaPermissaoRecursoTests
         });
         await db.SaveChangesAsync();
 
-        // Composite primary key is (type, id); no silent reassignment.
-        db.Recursos.Add(new VinculoRecursoResidencia {
+        // A separate DbContext bypasses EF's local identity-map duplicate
+        // check, exercising the actual composite primary key in SQLite.
+        await using var concurrent = new AcessoResidencialContext(options);
+        concurrent.Recursos.Add(new VinculoRecursoResidencia {
             TipoRecurso = TipoRecursoFinanceiro.Pessoa, RecursoId = 10,
             ResidenciaId = casaB.Id
         });
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => db.SaveChangesAsync());
+        await Assert.ThrowsAsync<DbUpdateException>(
+            () => concurrent.SaveChangesAsync());
     }
 
     [Fact]
