@@ -85,6 +85,22 @@ jobs:
           test "$exit_code" -ne 0
           grep -q 'GASTOS_REQUIRE_AUTH=true' "${RUNNER_TEMP}/required-auth-startup.log"
 
+      - name: Refuse production startup without configured tokens
+        shell: bash
+        env:
+          ASPNETCORE_ENVIRONMENT: "Production"
+          GASTOS_REQUIRE_AUTH: "false"
+          GASTOS_READ_TOKEN: ""
+          GASTOS_ADMIN_TOKEN: ""
+        run: |
+          set +e
+          timeout 15s dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/production-auth-startup.log" 2>&1
+          exit_code=$?
+          set -e
+          test "$exit_code" -ne 0
+          test "$exit_code" -ne 124
+          grep -q 'Ambiente Production' "${RUNNER_TEMP}/production-auth-startup.log"
+
       - name: Smoke-test protected API access
         shell: bash
         env:
