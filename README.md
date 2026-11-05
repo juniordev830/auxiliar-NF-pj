@@ -86,9 +86,11 @@ export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
+Além disso, `ASPNETCORE_ENVIRONMENT=Production` exige tokens mesmo quando essa flag não é fornecida ou está configurada como `false` (fail-closed por ambiente).
+
 O parâmetro `GASTOS_REQUIRE_AUTH` aceita somente `true` ou `false`; outros valores impedem o início para evitar configuração acidental. Use esse modo ao exigir proteção local, mas **não o trate como substituto de login por usuário nem como autorização para publicar a API**.
 
-Sem essas duas variáveis, o protótipo continua **sem autenticação** e somente em `127.0.0.1`, para preservar o uso local existente. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
+Em ambiente **Development**, sem esses tokens e sem `GASTOS_REQUIRE_AUTH=true`, o protótipo continua **sem autenticação** e restrito a `127.0.0.1`, preservando a operação de desenvolvimento local. Em **Production**, a inicialização exige sempre os dois tokens válidos, **mesmo quando `GASTOS_REQUIRE_AUTH=false`**: o bloqueio é automático, não pode ser desativado pela flag. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
 
 ## Testes e CI
 
