@@ -9,6 +9,7 @@ public sealed class AcessoResidencialContext(DbContextOptions<AcessoResidencialC
     public DbSet<ContaAcesso> Contas => Set<ContaAcesso>();
     public DbSet<ResidenciaAcesso> Residencias => Set<ResidenciaAcesso>();
     public DbSet<VinculoAcesso> Vinculos => Set<VinculoAcesso>();
+    public DbSet<VinculoRecursoResidencia> Recursos => Set<VinculoRecursoResidencia>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -38,6 +39,21 @@ public sealed class AcessoResidencialContext(DbContextOptions<AcessoResidencialC
             entity.HasOne(x => x.Residencia).WithMany(x => x.Vinculos)
                 .HasForeignKey(x => x.ResidenciaId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => x.ResidenciaId);
+        });
+        builder.Entity<VinculoRecursoResidencia>(entity =>
+        {
+            entity.ToTable("acesso_recursos");
+            entity.HasKey(x => new { x.TipoRecurso, x.RecursoId });
+            entity.Property(x => x.TipoRecurso).HasConversion<string>()
+                .HasMaxLength(20).IsRequired();
+            entity.Property(x => x.RecursoId).IsRequired();
+            entity.HasOne(x => x.Residencia)
+                .WithMany()
+                .HasForeignKey(x => x.ResidenciaId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.ResidenciaId);
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_acesso_recursos_id_positivo", "RecursoId > 0"));
         });
     }
 }
