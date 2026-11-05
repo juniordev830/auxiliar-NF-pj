@@ -29,8 +29,14 @@ jobs:
           fi
       - name: Build
         run: dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release --no-restore
-      - name: Smoke-test API validation
+      - name: Smoke-test API validation (explicit local development mode)
         shell: bash
+        env:
+          DOTNET_ENVIRONMENT: Development
+          ASPNETCORE_ENVIRONMENT: Development
+          GASTOS_REQUIRE_AUTH: "false"
+          GASTOS_READ_TOKEN: ""
+          GASTOS_ADMIN_TOKEN: ""
         run: |
           export ConnectionStrings__DefaultConnection="Data Source=${RUNNER_TEMP}/controle-gastos-smoke.db"
           dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/api.log" 2>&1 &
@@ -40,7 +46,11 @@ jobs:
             if curl --silent --fail http://127.0.0.1:5000/api/health >/dev/null; then break; fi
             sleep 1
           done
-          curl --silent --show-error --fail http://127.0.0.1:5000/api/health >/dev/null
+          if ! curl --silent --show-error --fail http://127.0.0.1:5000/api/health >/dev/null; then
+            echo "::error::A API não iniciou no modo Development; log do servidor:"
+            cat "${RUNNER_TEMP}/api.log"
+            exit 1
+          fi
           curl --silent --show-error -D - -o /dev/null http://127.0.0.1:5000/api/pessoas |
             tr -d '\r' | grep -iq 'Cache-Control: no-store'
           oversized_payload=$(python3 -c 'import json; print(json.dumps({"nome":"a"*20000,"idade":30}))')
@@ -89,6 +99,7 @@ jobs:
         shell: bash
         env:
           ASPNETCORE_ENVIRONMENT: "Production"
+          DOTNET_ENVIRONMENT: "Production"
           GASTOS_REQUIRE_AUTH: "false"
           GASTOS_READ_TOKEN: ""
           GASTOS_ADMIN_TOKEN: ""
