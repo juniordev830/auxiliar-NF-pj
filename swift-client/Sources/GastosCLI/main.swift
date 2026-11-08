@@ -10,13 +10,14 @@ struct GastosCLI {
       swift run gastos-cli resumo
       swift run gastos-cli mensal <ano> <mes>
       swift run gastos-cli transacoes [pagina] [limite] [RECEITA|DESPESA]
+      swift run gastos-cli csv [pagina] [limite] [RECEITA|DESPESA]
 
     A API deve estar executando na mesma maquina em 127.0.0.1:5000.
     """
 
     static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        guard let command = arguments.first, ["health", "pessoas", "resumo", "mensal", "transacoes"].contains(command) else {
+        guard let command = arguments.first, ["health", "pessoas", "resumo", "mensal", "transacoes", "csv"].contains(command) else {
             print(usage)
             return
         }
@@ -54,7 +55,7 @@ struct GastosCLI {
                 for person in monthly.porPessoa {
                     print("#\(person.pessoaId) \(person.pessoaNome): \(person.saldo)")
                 }
-            case "transacoes":
+            case "transacoes", "csv":
                 guard arguments.count <= 4,
                       let page = Int(arguments.count > 1 ? arguments[1] : "1"),
                       let limit = Int(arguments.count > 2 ? arguments[2] : "20") else {
@@ -63,10 +64,15 @@ struct GastosCLI {
                 }
                 let tipo = arguments.count > 3 ? arguments[3] : nil
                 let transacoes = try await client.transacoes(page: page, limit: limit, tipo: tipo)
-                for transaction in transacoes {
-                    print("#\(transaction.id) [\(transaction.tipo)] \(transaction.descricao): \(transaction.valor) (\(transaction.pessoaNome))")
+                if command == "csv" {
+                    // stdout is intentionally CSV-only, safe for shell redirection.
+                    print(TransactionCSV.render(transacoes), terminator: "")
+                } else {
+                    for transaction in transacoes {
+                        print("#\(transaction.id) [\(transaction.tipo)] \(transaction.descricao): \(transaction.valor) (\(transaction.pessoaNome))")
+                    }
+                    if transacoes.isEmpty { print("Nenhuma transacao encontrada.") }
                 }
-                if transacoes.isEmpty { print("Nenhuma transacao encontrada.") }
             default:
                 break
             }
