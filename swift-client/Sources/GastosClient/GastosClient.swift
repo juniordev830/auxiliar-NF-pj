@@ -19,8 +19,20 @@ public struct Resumo: Decodable {
     public let saldoGeral: Decimal
 }
 
+public struct Transacao: Decodable {
+    public let id: Int
+    public let descricao: String
+    public let valor: Decimal
+    public let tipo: String
+    public let pessoaId: Int
+    public let pessoaNome: String
+    public let dataCriacao: String
+}
+
 public enum GastosClientError: Error, Equatable {
     case invalidBaseURL
+    case invalidPagination
+    case invalidTransactionType
     case unexpectedResponse
     case httpStatus(Int)
 }
@@ -56,8 +68,42 @@ public struct GastosClient {
         try await get("api/transacoes/totais/resumo")
     }
 
-    private func get<T: Decodable>(_ path: String) async throws -> T {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+    /// Mirrors the backend's limits and accepted transaction types before making HTTP requests.
+    public static func transactionQuery(page: Int, limit: Int, tipo: String? = nil) throws -> [URLQueryItem] {
+        guard (1...100_000).contains(page), (1...100).contains(limit) else {
+            throw GastosClientError.invalidPagination
+        }
+        var items = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        if let tipo {
+            let normalized = tipo.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            guard ["RECEITA", "DESPESA"].contains(normalized) else {
+                throw GastosClientError.invalidTransactionType
+            }
+            items.append(URLQueryItem(name: "tipo", value: normalized))
+        }
+        return items
+    }
+
+    public func transacoes(page: Int = 1, limit: Int = 20, tipo: String? = nil) async throws -> [Transacao] {
+        let query = try Self.transactionQuery(page: page, limit: limit, tipo: tipo)
+        return try await get("api/transacoes", queryItems: query)
+    }
+
+    private func get<T: Decodable>(_ path: String, queryItems: [URLQueryItem] = []) async throws -> T {
+        guard var components = URLComponents(
+            url: baseURL.appendingPathComponent(path),
+            resolvingAgainstBaseURL: false
+        ) else {
+            throw GastosClientError.invalidBaseURL
+        }
+        if !queryItems.isEmpty { components.queryItems = queryItems }
+        guard let url = components.url else {
+            throw GastosClientError.invalidBaseURL
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = 10
         if let token, !token.isEmpty {
