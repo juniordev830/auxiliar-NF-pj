@@ -8,6 +8,7 @@ struct GastosCLI {
       swift run gastos-cli health
       swift run gastos-cli pessoas
       swift run gastos-cli resumo
+      swift run gastos-cli mensal <ano> <mes>
       swift run gastos-cli transacoes [pagina] [limite] [RECEITA|DESPESA]
 
     A API deve estar executando na mesma maquina em 127.0.0.1:5000.
@@ -15,7 +16,7 @@ struct GastosCLI {
 
     static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        guard let command = arguments.first, ["health", "pessoas", "resumo", "transacoes"].contains(command) else {
+        guard let command = arguments.first, ["health", "pessoas", "resumo", "mensal", "transacoes"].contains(command) else {
             print(usage)
             return
         }
@@ -37,6 +38,22 @@ struct GastosCLI {
                 print("Receitas: \(resumo.totalReceitas)")
                 print("Despesas: \(resumo.totalDespesas)")
                 print("Saldo: \(resumo.saldoGeral)")
+            case "mensal":
+                guard arguments.count == 3,
+                      let year = Int(arguments[1]),
+                      let month = Int(arguments[2]) else {
+                    fputs("Informe ano e mes numericos.\\n", stderr)
+                    exit(2)
+                }
+                let monthly = try await client.resumoMensal(year: year, month: month)
+                print("Periodo: \\(monthly.mes)/\\(monthly.ano)")
+                print("Quantidade: \\(monthly.quantidade)")
+                print("Receitas: \\(monthly.totalReceitas)")
+                print("Despesas: \\(monthly.totalDespesas)")
+                print("Saldo: \\(monthly.saldoGeral)")
+                for person in monthly.porPessoa {
+                    print("#\\(person.pessoaId) \\(person.pessoaNome): \\(person.saldo)")
+                }
             case "transacoes":
                 guard arguments.count <= 4,
                       let page = Int(arguments.count > 1 ? arguments[1] : "1"),
