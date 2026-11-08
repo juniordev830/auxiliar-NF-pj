@@ -42,17 +42,17 @@ struct GastosCLI {
                 guard arguments.count == 3,
                       let year = Int(arguments[1]),
                       let month = Int(arguments[2]) else {
-                    fputs("Informe ano e mes numericos.\\n", stderr)
+                    fputs("Informe ano e mes numericos.\n", stderr)
                     exit(2)
                 }
                 let monthly = try await client.resumoMensal(year: year, month: month)
-                print("Periodo: \\(monthly.mes)/\\(monthly.ano)")
-                print("Quantidade: \\(monthly.quantidade)")
-                print("Receitas: \\(monthly.totalReceitas)")
-                print("Despesas: \\(monthly.totalDespesas)")
-                print("Saldo: \\(monthly.saldoGeral)")
+                print("Periodo: \(monthly.mes)/\(monthly.ano)")
+                print("Quantidade: \(monthly.quantidade)")
+                print("Receitas: \(monthly.totalReceitas)")
+                print("Despesas: \(monthly.totalDespesas)")
+                print("Saldo: \(monthly.saldoGeral)")
                 for person in monthly.porPessoa {
-                    print("#\\(person.pessoaId) \\(person.pessoaNome): \\(person.saldo)")
+                    print("#\(person.pessoaId) \(person.pessoaNome): \(person.saldo)")
                 }
             case "transacoes":
                 guard arguments.count <= 4,
