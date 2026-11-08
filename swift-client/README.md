@@ -20,6 +20,9 @@ cd swift-client
 swift run gastos-cli health
 swift run gastos-cli pessoas
 swift run gastos-cli resumo
+swift run gastos-cli transacoes
+swift run gastos-cli transacoes 2 10 DESPESA
+swift run gastos-cli transacoes 1 20 RECEITA
 swift test
 ```
 
@@ -30,12 +33,12 @@ export GASTOS_READ_TOKEN="seu-token-local-configurado-no-backend"
 swift run gastos-cli pessoas
 ```
 
-Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000, evitando enviar tokens para serviços externos. As operações são GET e não modificam o banco.
+Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000, evitando enviar tokens para serviços externos. As operações são GET e não modificam o banco. A listagem de transações aceita **página entre 1 e 100.000**, **limite de 1 a 100 itens** e filtro opcional `RECEITA` ou `DESPESA`. Esses limites também são conferidos antes do pedido HTTP.
 
 ## Estrutura
 
 - `Sources/GastosClient/GastosClient.swift`: modelos e chamadas HTTP tipadas.
 - `Sources/GastosCLI/main.swift`: comandos de terminal.
-- `Tests/GastosClientTests`: testes de validade de URL e decodificação das respostas.
+- `Tests/GastosClientTests`: testes de validade de URL, filtros, paginação e decodificação das respostas.
 
 O CI valida compilação e testes do pacote Swift. O cliente ainda **não** tem teste de integração real contra servidor ASP.NET nem deve ser usado em produção com dados financeiros.
