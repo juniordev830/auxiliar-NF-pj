@@ -33,7 +33,7 @@ export GASTOS_READ_TOKEN="seu-token-local-configurado-no-backend"
 swift run gastos-cli pessoas
 ```
 
-Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000, evitando enviar tokens para serviços externos. As operações são GET e não modificam o banco. A listagem de transações aceita **página entre 1 e 100.000**, **limite de 1 a 100 itens** e filtro opcional `RECEITA` ou `DESPESA`. Esses limites também são conferidos antes do pedido HTTP.
+Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000 e **não segue redirecionamentos HTTP**, para evitar encaminhamento acidental do token a serviços externos. As operações são GET e não modificam o banco. A listagem de transações aceita **página entre 1 e 100.000**, **limite de 1 a 100 itens** e filtro opcional `RECEITA` ou `DESPESA`. Esses limites também são conferidos antes do pedido HTTP.
 
 ## Estrutura
 
