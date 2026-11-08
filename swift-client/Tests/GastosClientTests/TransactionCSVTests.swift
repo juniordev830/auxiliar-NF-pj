@@ -58,6 +58,6 @@ final class TransactionCSVTests: XCTestCase {
         let csv = TransactionCSV.render([])
         XCTAssertTrue(csv.hasPrefix("\"id\",\"dataCriacao\""))
         XCTAssertTrue(csv.hasSuffix("\r\n"))
-        XCTAssertEqual(csv.filter { $0 == "\n" }.count, 1)
+        XCTAssertEqual(csv.components(separatedBy: "\r\n").count, 2)
     }
 }
