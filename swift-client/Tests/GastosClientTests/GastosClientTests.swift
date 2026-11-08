@@ -32,6 +32,37 @@ final class GastosClientTests: XCTestCase {
         XCTAssertEqual(noFilter.count, 2)
     }
 
+    func testMonthlyQueryValidatesYearAndMonth() throws {
+        let items = try GastosClient.monthlyQuery(year: 2026, month: 11)
+        XCTAssertEqual(items.map { $0.name }, ["ano", "mes"])
+        XCTAssertEqual(items.map { $0.value ?? "" }, ["2026", "11"])
+        XCTAssertThrowsError(try GastosClient.monthlyQuery(year: 1999, month: 11))
+        XCTAssertThrowsError(try GastosClient.monthlyQuery(year: 2201, month: 11))
+        XCTAssertThrowsError(try GastosClient.monthlyQuery(year: 2026, month: 0))
+        XCTAssertThrowsError(try GastosClient.monthlyQuery(year: 2026, month: 13))
+    }
+
+    func testDecodesMonthlyFinancialReport() throws {
+        let json = #"""
+        {
+            "ano": 2026, "mes": 11, "quantidade": 2,
+            "totalReceitas": 300.50, "totalDespesas": 125.25,
+            "saldoGeral": 175.25,
+            "porPessoa": [
+                {"pessoaId": 7, "pessoaNome": "Ana",
+                 "receitas": 300.50, "despesas": 125.25, "saldo": 175.25}
+            ]
+        }
+        """#
+        let report = try JSONDecoder().decode(ResumoMensal.self, from: Data(json.utf8))
+        XCTAssertEqual(report.ano, 2026)
+        XCTAssertEqual(report.mes, 11)
+        XCTAssertEqual(report.quantidade, 2)
+        XCTAssertEqual(report.saldoGeral, Decimal(string: "175.25"))
+        XCTAssertEqual(report.porPessoa.first?.pessoaNome, "Ana")
+        XCTAssertEqual(report.porPessoa.first?.saldo, Decimal(string: "175.25"))
+    }
+
     func testDecodesTransactionResponse() throws {
         let json = #"[{"id":7,"descricao":"Mercado","valor":125.90,"tipo":"DESPESA","pessoaId":1,"pessoaNome":"Ana","dataCriacao":"2026-11-07T14:35:00"}]"#
         let transactions = try JSONDecoder().decode([Transacao].self, from: Data(json.utf8))
