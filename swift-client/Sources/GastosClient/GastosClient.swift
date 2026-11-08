@@ -3,6 +3,20 @@ import Foundation
 import FoundationNetworking
 #endif
 
+/// Reject any redirect, including a redirect to a non-loopback host.
+/// URLSession would otherwise follow it and might forward authentication data.
+private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+
 public struct Health: Decodable {
     public let status: String
 }
@@ -109,7 +123,9 @@ public struct GastosClient {
         if let token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let session = URLSession(configuration: .ephemeral, delegate: NoRedirectDelegate(), delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+        let (data, response) = try await session.data(for: request)
         guard let response = response as? HTTPURLResponse else {
             throw GastosClientError.unexpectedResponse
         }
