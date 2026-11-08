@@ -24,6 +24,7 @@ swift run gastos-cli mensal 2026 11
 swift run gastos-cli transacoes
 swift run gastos-cli transacoes 2 10 DESPESA
 swift run gastos-cli transacoes 1 20 RECEITA
+swift run gastos-cli csv 1 100 DESPESA > despesas.csv
 swift test
 ```
 
@@ -34,7 +35,18 @@ export GASTOS_READ_TOKEN="seu-token-local-configurado-no-backend"
 swift run gastos-cli pessoas
 ```
 
-Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000 e **não segue redirecionamentos HTTP**, para evitar encaminhamento acidental do token a serviços externos. As operações são GET e não modificam o banco. O relatório mensal apresenta receitas, despesas, saldo, quantidade de registros e totais por pessoa, com validação de **ano (2000–2200)** e **mês (1–12)**. A listagem de transações aceita **página entre 1 e 100.000**, **limite de 1 a 100 itens** e filtro opcional `RECEITA` ou `DESPESA`. Esses limites também são conferidos antes do pedido HTTP.
+Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000 e **não segue redirecionamentos HTTP**, para evitar encaminhamento acidental do token a serviços externos. As operações são GET e não modificam o banco. ### Exportar CSV
+
+O comando `csv` exporta **uma página de transações por vez**. Por segurança, o resultado vai somente para a saída padrão, e pode ser redirecionado a um arquivo local:
+
+```bash
+swift run gastos-cli csv 1 100 > transacoes.csv
+swift run gastos-cli csv 1 100 RECEITA > receitas.csv
+```
+
+O arquivo inclui cabeçalho, aspas e valores separados por vírgulas, com proteção de campos que começam com fórmulas de planilhas. **Não compartilhe o CSV sem verificar os dados pessoais ou financeiros exportados.** Cada chamada recupera no máximo 100 itens; não é um backup completo do banco.
+
+O relatório mensal apresenta receitas, despesas, saldo, quantidade de registros e totais por pessoa, com validação de **ano (2000–2200)** e **mês (1–12)**. A listagem de transações aceita **página entre 1 e 100.000**, **limite de 1 a 100 itens** e filtro opcional `RECEITA` ou `DESPESA`. Esses limites também são conferidos antes do pedido HTTP.
 
 ## Estrutura
 
