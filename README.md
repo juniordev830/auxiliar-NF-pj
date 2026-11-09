@@ -79,3 +79,17 @@ Sem essas duas variáveis, o protótipo continua **sem autenticação** e soment
 ## Testes e CI
 
 O GitHub Actions restaura, compila, audita dependências NuGet e realiza testes smoke da validação de API, paginação de transações, regra de menores, exclusão em cascata e acessos anônimo, leitor e administrador. Testes de integração mais completos ainda são necessários antes de considerar a API pronta para produção.
+
+## Cliente de terminal em Swift (nova linguagem)
+
+O projeto também inclui um cliente **Swift** experimental em [`swift-client/`](swift-client/README.md). Ele lê disponibilidade, pessoas e resumo financeiro da API **local** (sem modificar registros):
+
+```bash
+cd swift-client
+swift run gastos-cli health
+swift run gastos-cli pessoas
+swift run gastos-cli resumo
+swift test
+```
+
+É necessário manter a API .NET em execução na mesma máquina. Para instâncias locais com autenticação por token, use `GASTOS_READ_TOKEN` como variável de ambiente. Veja o README do cliente para requisitos e limitações. Não é um aplicativo iOS.

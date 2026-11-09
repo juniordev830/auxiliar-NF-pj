@@ -1,0 +1,22 @@
+name: Swift local API client
+on:
+  push:
+    paths:
+      - 'swift-client/**'
+      - '.github/workflows/swift-client.yml'
+  pull_request:
+    paths:
+      - 'swift-client/**'
+      - '.github/workflows/swift-client.yml'
+permissions:
+  contents: read
+jobs:
+  swift-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+      - name: Build and test Swift client
+        run: swift test --package-path swift-client
