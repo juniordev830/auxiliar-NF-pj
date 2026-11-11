@@ -4,7 +4,7 @@ API inicial executável para registrar pessoas da residência, receitas e despes
 
 ## Estado real do projeto
 
-O backend ASP.NET Core (.NET 8) está implementado nesta branch. A interface React ainda não está incluída; os documentos antigos descreviam uma aplicação planejada e não devem ser interpretados como prova de que o frontend existe.
+O backend ASP.NET Core (.NET 8) está implementado. Há um painel web **HTML/CSS/JavaScript para uso local**, servido pelo mesmo processo .NET. Uma interface React independente ainda não está incluída; os documentos antigos descreviam uma aplicação planejada.
 
 ## Requisitos
 
@@ -19,7 +19,19 @@ dotnet restore ControladorGastos/ControladorGastos.csproj
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
-A API informa as rotas em `http://localhost:5000` ou na URL local exibida pelo ASP.NET Core. O banco `controlador-gastos.db` é criado localmente no primeiro início. O protótipo usa `EnsureCreated`; antes de produção, crie migrations versionadas e configure backup e proteção dos dados financeiros.
+O servidor escuta **somente em `127.0.0.1:5000`** por segurança. Abra **http://127.0.0.1:5000/** no navegador para usar o painel local, sem instalar Node.js ou executar `npm run dev`. A API está em `http://127.0.0.1:5000/api/health` e nas demais rotas abaixo. O banco `controlador-gastos.db` é criado localmente no primeiro início. O protótipo usa `EnsureCreated`; antes de produção, crie migrations versionadas e configure backup e proteção dos dados financeiros.
+
+## Problemas de conexão no VS Code / PowerShell (Windows)
+
+1. Abra no VS Code **a pasta raiz do repositório**, não a pasta `C:\\Users` isoladamente.
+2. No terminal integrado, execute `dotnet --version` para verificar se o SDK .NET 8 está instalado.
+3. Execute `dotnet restore ControladorGastos/ControladorGastos.csproj` e `dotnet run --project ControladorGastos/ControladorGastos.csproj`. Mantenha o terminal aberto.
+4. Abra `http://127.0.0.1:5000/` no navegador. **Não digite `Local:` ou `Network:` como comandos do PowerShell.**
+5. Em **outro terminal PowerShell**, rode `Invoke-RestMethod http://127.0.0.1:5000/api/health`, ou execute `.\\scripts\\diagnosticar-conexao.ps1`.
+
+Se o endpoint `/api/health` responder com `{"status":"ok"}`, a API local está alcançável. Se `/api/health` funcionar, mas `/` retornar 404, atualize este código e reinicie o processo `dotnet run`. Se ambos falharem, inspecione os erros do terminal do servidor e a porta 5000. Se o navegador exibir 401/403 ao carregar dados, foram configurados tokens de acesso: o painel **não coleta tokens**, e a API deverá ser usada por um cliente seguro conforme a seção de proteção abaixo.
+
+**Importante:** `localhost` e `127.0.0.1` não são endereços públicos. Abrir o painel no navegador **não significa publicar o projeto na internet**. Esta versão guarda dados financeiros e **não deve** ser exposta diretamente a outras máquinas, à internet ou por link público/porta pública do Codespaces; faltam identidade individual, HTTPS e controles de autorização. A primeira restauração de pacotes (`dotnet restore`) pode precisar de acesso à internet, mas o uso local do sistema não requer internet depois que as dependências estiverem disponíveis.
 
 ## Endpoints
 
@@ -53,7 +65,7 @@ curl -X POST http://localhost:5000/api/transacoes \\
 - O valor deve ser positivo; valores monetários são representados como decimal.
 - Menores de 18 anos não podem registrar receitas.
 - A remoção de uma pessoa remove suas transações relacionadas.
-- Esta versão não possui login individual nem frontend. Tokens de leitura/administração podem ser ativados apenas para uso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
+- Esta versão não possui login individual nem frontend React independente (o painel HTML básico é local). Tokens de leitura/administração podem ser ativados apenas para uso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
 
 ## Proteção opcional por tokens (acesso local)
 
