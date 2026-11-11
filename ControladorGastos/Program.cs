@@ -35,6 +35,11 @@ static bool TokenMatches(string? provided, string expected)
 
 var app = builder.Build();
 
+// Exibe a interface local no mesmo endereço da API. Usar origem única evita
+// falhas de CORS sem liberar acesso externo aos dados financeiros.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 if (tokenMode)
 {
     app.Use(async (context, next) =>
