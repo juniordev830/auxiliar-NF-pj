@@ -41,6 +41,14 @@ jobs:
             sleep 1
           done
           curl --silent --show-error --fail http://127.0.0.1:5000/api/health >/dev/null
+          # Verify the browser UI is served from the same host and port as the API.
+          curl --silent --show-error --fail http://127.0.0.1:5000/ -o "$RUNNER_TEMP/dashboard.html"
+          grep -q "Controle de Gastos" "$RUNNER_TEMP/dashboard.html"
+          curl --silent --show-error --fail http://127.0.0.1:5000/app.js -o "$RUNNER_TEMP/dashboard.js"
+          grep -q 'api/health' "$RUNNER_TEMP/dashboard.js"
+          curl --silent --show-error --fail http://127.0.0.1:5000/styles.css -o "$RUNNER_TEMP/dashboard.css"
+          grep -q 'background' "$RUNNER_TEMP/dashboard.css"
+
           person_response=$(curl --silent --show-error --fail -H 'Content-Type: application/json' -d '{"nome":"Ana","idade":30}' http://127.0.0.1:5000/api/pessoas)
           person_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$person_response")
           invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Content-Type: application/json' -d "{\"descricao\":\"Valor fracionado\",\"valor\":12.345,\"tipo\":\"DESPESA\",\"pessoaId\":$person_id}" http://127.0.0.1:5000/api/transacoes)
