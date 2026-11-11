@@ -27,7 +27,10 @@ O servidor escuta **somente em `127.0.0.1:5000`** por segurança. Abra **http://
 2. No terminal integrado, execute `dotnet --version` para verificar se o SDK .NET 8 está instalado.
 3. Execute `dotnet restore ControladorGastos/ControladorGastos.csproj` e `dotnet run --project ControladorGastos/ControladorGastos.csproj`. Mantenha o terminal aberto.
 4. Abra `http://127.0.0.1:5000/` no navegador. **Não digite `Local:` ou `Network:` como comandos do PowerShell.**
-5. Em **outro terminal PowerShell**, rode `Invoke-RestMethod http://127.0.0.1:5000/api/health`, ou execute `.\\scripts\\diagnosticar-conexao.ps1`.
+5. Em **outro terminal**, execute `scripts/diagnosticar-conexao.cmd` (CMD ou PowerShell) ou rode `Invoke-RestMethod http://127.0.0.1:5000/api/health` no PowerShell. O `.cmd` não depende da execução de arquivos `.ps1` e funciona mesmo com essa política bloqueada.
+6. Se `dotnet` não for reconhecido, instale o **SDK .NET 8** em https://dotnet.microsoft.com/download/dotnet/8.0, abra um **novo terminal** e confira com `dotnet --version`. Instalar apenas o runtime não basta para compilar.
+
+Para diagnósticos mais detalhados, o script PowerShell `scripts/diagnosticar-conexao.ps1` continua disponível. Se `.ps1` estiver bloqueado, prefira o `.cmd`, sem alterar a política de execução do Windows.
 
 Se o endpoint `/api/health` responder com `{"status":"ok"}`, a API local está alcançável. Se `/api/health` funcionar, mas `/` retornar 404, atualize este código e reinicie o processo `dotnet run`. Se ambos falharem, inspecione os erros do terminal do servidor e a porta 5000. Se o navegador exibir 401/403 ao carregar dados, foram configurados tokens de acesso: o painel **não coleta tokens**, e a API deverá ser usada por um cliente seguro conforme a seção de proteção abaixo.
 
