@@ -1,5 +1,7 @@
 # 📚 Documentação - Sistema de Controle de Gastos Residenciais
 
+> **Aviso de atualização (11/11/2026):** este arquivo descreve a arquitetura React/serviços originalmente planejada e contém comandos e caminhos que **não correspondem ao código executável atual**. A implementação atual possui API ASP.NET Core e um painel web HTML/JS básico servido localmente na mesma porta 5000. Consulte o [README.md](README.md) para instruções válidas. Não execute `cd frontend && npm run dev`: a pasta React não existe nesta versão. Não publique a API na internet sem autenticação, autorização por usuário e HTTPS.
+
 ## 🎯 Visão Geral
 
 Sistema completo para gerenciamento de receitas e despesas residenciais, desenvolvido com:
