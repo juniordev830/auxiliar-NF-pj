@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Controle de Gastos Residenciais</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Painel financeiro · Ambiente local</p>
+        <h1>Controle de Gastos</h1>
+        <p class="subtitle">Receitas e despesas da residência, no seu computador.</p>
+      </div>
+      <div class="connection">
+        <span id="connection" class="status" role="status" aria-live="polite">Verificando conexão…</span>
+        <button id="refresh" type="button" class="secondary">Atualizar dados</button>
+      </div>
+    </header>
+
+    <p id="message" class="message" role="alert" hidden></p>
+
+    <section class="metrics" aria-label="Resumo financeiro">
+      <article class="metric"><span>Receitas</span><strong id="income">—</strong></article>
+      <article class="metric"><span>Despesas</span><strong id="expenses">—</strong></article>
+      <article class="metric"><span>Saldo</span><strong id="balance">—</strong></article>
+    </section>
+
+    <div class="columns">
+      <section class="panel">
+        <h2>Adicionar morador</h2>
+        <form id="person-form">
+          <label for="person-name">Nome</label>
+          <input id="person-name" name="nome" maxlength="100" required placeholder="Nome do morador">
+          <label for="person-age">Idade</label>
+          <input id="person-age" name="idade" type="number" min="0" max="120" required placeholder="Ex.: 28">
+          <button type="submit">Salvar morador</button>
+        </form>
+        <h3>Moradores cadastrados</h3>
+        <ul id="people" class="people"><li>Carregando…</li></ul>
+      </section>
+      <section class="panel">
+        <h2>Nova transação</h2>
+        <form id="transaction-form">
+          <label for="description">Descrição</label>
+          <input id="description" name="descricao" maxlength="200" required placeholder="Ex.: Compra no mercado">
+          <div class="form-grid">
+            <div>
+              <label for="amount">Valor (R$)</label>
+              <input id="amount" name="valor" type="number" min="0.01" max="100000000" step="0.01" required placeholder="0,00">
+            </div>
+            <div>
+              <label for="type">Tipo</label>
+              <select id="type" name="tipo"><option value="DESPESA">Despesa</option><option value="RECEITA">Receita</option></select>
+            </div>
+          </div>
+          <label for="person">Morador</label>
+          <select id="person" name="pessoaId" required><option value="">Carregando moradores…</option></select>
+          <button type="submit">Salvar transação</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="panel history">
+      <div class="section-heading"><h2>Últimas transações</h2><span>Até 20 registros</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Descrição</th><th>Morador</th><th>Tipo</th><th>Valor</th></tr></thead>
+          <tbody id="transactions"><tr><td colspan="4">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <footer>Uso local em <code>127.0.0.1:5000</code>. Não publique esta versão na internet sem autenticação e HTTPS.</footer>
+  </main>
+</body>
+</html>
