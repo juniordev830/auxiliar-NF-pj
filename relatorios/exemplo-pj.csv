@@ -1,0 +1,5 @@
+Data;Categoria;Valor;Tipo;Descricao;Status;Contraparte;Vencimento;Pagamento
+2026-11-03;RECEITA / Serviços;2500.00;RECEITA;Desenvolvimento de API;PAGO;Cliente exemplo;2026-11-10;2026-11-09
+2026-11-04;DESPESA / Software;180.00;DESPESA;Assinatura de ferramenta;PAGO;Fornecedor exemplo;2026-11-04;2026-11-04
+2026-11-08;DESPESA / Contabilidade;320.00;DESPESA;Mensalidade contábil;PENDENTE;Escritório exemplo;2026-11-20;
+2026-11-13;RECEITA / Consultoria;900.00;RECEITA;Consultoria pontual;PENDENTE;Cliente exemplo;2026-11-25;
