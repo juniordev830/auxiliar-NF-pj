@@ -174,7 +174,7 @@
           try {
             await request('/api/pj/lancamentos/'+item.id+'/pagamento',{
               method:'PUT',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({dataPagamento:item.status==='PAGO'?null:localDate})
+              body:JSON.stringify({dataPagamento:item.status==='PAGO'?null:(localDate+'T00:00:00')})
             });
             await load();
           }catch(e){notify(e.message,true);}finally{btn.disabled=false;}
@@ -214,8 +214,9 @@
         const body={
           descricao:$('descricao').value, tipo:$('tipo').value,
           categoria:$('categoria').value,contraparte:$('contraparte').value,
-          valor:Number($('valor').value), competencia:$('competencia').value,
-          vencimento:$('vencimento').value||null, dataPagamento:$('pagamento').value||null
+          valor:Number($('valor').value), competencia:$('competencia').value+'T00:00:00',
+          vencimento:$('vencimento').value?$('vencimento').value+'T00:00:00':null,
+          dataPagamento:$('pagamento').value?$('pagamento').value+'T00:00:00':null
         };
         try{
           await request('/api/pj/lancamentos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
