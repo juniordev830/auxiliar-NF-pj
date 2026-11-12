@@ -173,3 +173,7 @@ swift test
 ```
 
 É necessário manter a API .NET em execução na mesma máquina. Para instâncias locais com autenticação por token, use `GASTOS_READ_TOKEN` como variável de ambiente. Veja o README do cliente para requisitos e limitações. Não é um aplicativo iOS.
+
+## Validação e manutenção
+
+Para revisar alterações neste projeto, consulte o [guia técnico de validação](docs/GUIA_DE_VALIDACAO.md), com comandos, cenários de regressão e próximos incrementos.
