@@ -1,5 +1,6 @@
 using ControladorGastos.Data;
 using ControladorGastos.Models;
+using ControladorGastos.PJ;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
@@ -8,6 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=controlador-gastos.db";
 builder.Services.AddDbContext<ControladorGastosContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<AuxiliarPjContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("AuxiliarPj")
+        ?? "Data Source=auxiliar-pj.db"));
 
 // Proteção opcional para um operador local: não substitui contas e autorização por usuário.
 var readToken = builder.Configuration["GASTOS_READ_TOKEN"];
@@ -34,6 +38,8 @@ static bool TokenMatches(string? provided, string expected)
 }
 
 var app = builder.Build();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 if (tokenMode)
 {
@@ -77,9 +83,12 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ControladorGastosContext>();
     db.Database.EnsureCreated();
+    var pj = scope.ServiceProvider.GetRequiredService<AuxiliarPjContext>();
+    pj.Database.EnsureCreated();
 }
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapAuxiliarPjEndpoints();
 
 app.MapGet("/api/pessoas", async (ControladorGastosContext db) =>
     Results.Ok(await db.Pessoas.AsNoTracking()

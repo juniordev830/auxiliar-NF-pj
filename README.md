@@ -1,4 +1,84 @@
-# Controle de Gastos Residenciais
+# Auxiliar PJ
+
+**Sistema local de apoio à gestão financeira para profissionais PJ, freelancers e pequenas empresas.**
+
+Este repositório passa a reunir o módulo de receitas/despesas do `controle-gastos-residenciais` e o
+gerador de relatórios do [`relatorio-altomatizado-de-contas-`](https://github.com/juniordev830/relatorio-altomatizado-de-contas-).
+Os dois códigos foram integrados, mas o segundo repositório foi preservado sem arquivamento ou exclusão.
+
+> **Status:** primeira versão de desenvolvimento, não pronta para produção.
+> Não disponibilize na internet nem use dados financeiros sensíveis sem autenticação,
+> autorização, backup e migrações de banco.
+
+## Executar o Auxiliar PJ
+
+Requisito: **.NET SDK 8**. Na raiz do repositório:
+
+```bash
+dotnet restore ControladorGastos/ControladorGastos.csproj
+dotnet run --project ControladorGastos/ControladorGastos.csproj
+```
+
+Abra **http://127.0.0.1:5000**. O painel PJ é uma página HTML responsiva servida pela
+API ASP.NET Core; não exige instalar Node ou iniciar frontend separado.
+
+O módulo legado continua com seu banco `controlador-gastos.db`; os lançamentos PJ ficam em
+`auxiliar-pj.db`, mantendo os dados residenciais separados. Não há migração automática
+dos lançamentos do módulo residencial para o PJ.
+
+## Funcionalidades implementadas
+
+- Lançamentos de **receitas e despesas** com categoria, contraparte, competência, vencimento e valor;
+- Pagamentos marcados como recebidos/pagos, pendentes ou atrasados;
+- Painel mensal com saldos previsto e realizado (por competência);
+- Listagem paginada, filtros por período e situação;
+- Exportação CSV para o relatório HTML Python com indicadores e gráficos.
+
+### API PJ
+
+| Método | Endereço | Finalidade |
+| --- | --- | --- |
+| GET | `/api/pj/resumo?ano=2026&mes=11` | Indicadores do período |
+| GET | `/api/pj/lancamentos?ano=2026&mes=11&page=1&limit=10` | Lançamentos |
+| POST | `/api/pj/lancamentos` | Criar lançamento |
+| PUT | `/api/pj/lancamentos/{id}/pagamento` | Registrar ou reabrir pagamento |
+| DELETE | `/api/pj/lancamentos/{id}` | Excluir lançamento |
+| GET | `/api/pj/exportar.csv?ano=2026&mes=11` | Baixar CSV |
+
+Exemplo de lançamento:
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/pj/lancamentos \
+  -H "Content-Type: application/json" \
+  -d '{"descricao":"Projeto web","tipo":"RECEITA","categoria":"Serviços","valor":1500.00,"competencia":"2026-11-12T00:00:00","vencimento":"2026-11-20T00:00:00","dataPagamento":null,"contraparte":"Cliente exemplo"}'
+```
+
+O resumo considera a **competência**, não a data do movimento bancário. O saldo realizado
+soma somente os lançamentos da competência marcada que já têm data de pagamento.
+O status atrasado usa o dia UTC do servidor. Não há cálculo automático de impostos, emissão
+de notas ou declarações fiscais nesta fase.
+
+## Relatórios migrados do projeto nº 2
+
+```bash
+python -m pip install -r relatorios/requirements.txt
+python relatorios/gerar_relatorio.py relatorios/exemplo-pj.csv --saida relatorio-pj.html
+python -m pytest relatorios/tests -q
+```
+
+Abra `relatorio-pj.html` no navegador. Para usar seus lançamentos, exporte CSV
+pelo botão do painel e informe o arquivo no lugar de `relatorios/exemplo-pj.csv`.
+Mais detalhes em [relatorios/README.md](relatorios/README.md).
+
+## Antes de considerar uso profissional
+
+São necessários autenticação e perfis de empresa, controle de acesso, migrações
+versionadas, backup/recuperação, testes de integração e revisão de segurança.
+Funções contábeis/fiscais exigem validação de profissional habilitado.
+
+---
+
+## Módulo original: Controle de Gastos Residenciais
 
 API inicial executável para registrar pessoas da residência, receitas e despesas, com persistência local em SQLite.
 
@@ -53,7 +133,7 @@ curl -X POST http://localhost:5000/api/transacoes \\
 - O valor deve ser positivo; valores monetários são representados como decimal.
 - Menores de 18 anos não podem registrar receitas.
 - A remoção de uma pessoa remove suas transações relacionadas.
-- Esta versão não possui login individual nem frontend. Tokens de leitura/administração podem ser ativados apenas para uso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
+- O módulo residencial ainda não possui frontend próprio nem login individual; o módulo PJ possui um painel HTML local. Tokens de leitura/administração podem ser ativados apenas para uso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
 
 ## Proteção opcional por tokens (acesso local)
 
