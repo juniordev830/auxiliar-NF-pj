@@ -24,3 +24,9 @@ Thumbs.db
 # Logs and temporary files
 *.log
 *.tmp
+
+# Exportações locais do Auxiliar PJ (podem conter dados financeiros)
+lancamentos-pj.csv
+relatorio-pj.html
+relatorios/exports/
+relatorios/*.html
