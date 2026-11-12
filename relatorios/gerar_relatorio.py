@@ -21,7 +21,7 @@ from io import BytesIO
 # ============================================================
 # CONFIGURAÇÕES — ajuste aqui para a sua planilha
 # ============================================================
-ARQUIVO_ENTRADA = "lancamentos-pj.csv"   # caminho do seu arquivo .xlsx
+ARQUIVO_ENTRADA = "lancamentos-pj.csv"   # CSV exportado pela API ou arquivo .xlsx
 ABA = 0                                   # nome ou índice da aba (0 = primeira)
 
 COLUNA_DATA = "Data"                      # coluna com datas (ou None se não tiver)
@@ -33,7 +33,7 @@ ARQUIVO_SAIDA = "relatorio-pj.html"
 
 
 def carregar_dados(caminho: str, aba) -> pd.DataFrame:
-    """Lê a planilha e faz limpeza básica."""
+    """Lê CSV da API ou planilha e faz limpeza básica."""
     if Path(caminho).suffix.lower() == ".csv":
         df = pd.read_csv(caminho, sep=";", encoding="utf-8-sig", decimal=".")
     else:
@@ -125,7 +125,7 @@ def parse_aba(value: str):
         return value
 
 
-def montar_html(df: pd.DataFrame, imgs: dict) -> str:
+def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> str:
     """Monta o relatório HTML final."""
     total = df[COLUNA_VALOR].sum()
     media = df[COLUNA_VALOR].mean()
@@ -189,7 +189,9 @@ def montar_html(df: pd.DataFrame, imgs: dict) -> str:
 </head>
 <body>
     <h1>Auxiliar PJ — Relatório financeiro</h1>
-    <p>Gerado a partir de <b>{escape(ARQUIVO_ENTRADA)}</b> em {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+    <p>Gerado a partir de <b>{escape(str(origem))}</b> em {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+
+    {resumo_pj}
 
     <div class="cards">
         <div class="card"><div class="valor">{total:,.2f}</div><div class="label">Volume total ({COLUNA_VALOR})</div></div>
@@ -235,7 +237,7 @@ def main():
     }
 
     print("Montando relatório...")
-    html = montar_html(df, imgs)
+    html = montar_html(df, imgs, origem=str(caminho))
 
     Path(args.saida).write_text(html, encoding="utf-8")
     print(f"Relatório salvo em: {args.saida}")
