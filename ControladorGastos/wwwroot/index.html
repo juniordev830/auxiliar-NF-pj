@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Auxiliar PJ | Gestão financeira</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, "Segoe UI", system-ui, sans-serif;
+      background:#10151c; color:#e7edf2; }
+    * { box-sizing:border-box }
+    body { margin:0; min-height:100vh; }
+    button, input, select { font:inherit; }
+    button { cursor:pointer }
+    .shell { max-width:1240px; padding:32px 24px 70px; margin:auto; }
+    .top { display:flex; justify-content:space-between; gap:24px; align-items:center; flex-wrap:wrap; padding-bottom:29px; border-bottom:1px solid #29313b; }
+    .brand { display:flex; align-items:center; gap:13px; }
+    .mark { height:42px; width:42px; display:grid; place-items:center; border-radius:12px; font-size:19px; font-weight:800; color:#bcdce9; background:#203340; border:1px solid #33505d; }
+    h1 { font-size:22px; font-weight:650; margin:0; letter-spacing:-.6px; }
+    .sub { margin:4px 0 0; font-size:13px; color:#91a0ae; }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    select, input { border:1px solid #33404c; border-radius:9px; background:#17202a; color:#e8eef5; padding:11px 12px; min-width:0; outline:none; }
+    select:focus, input:focus { border-color:#79a6bc; }
+    select { padding-right:20px; }
+    .btn { border:1px solid #385060; background:#22323d; color:#d5ebf5; padding:11px 16px; border-radius:9px; font-weight:600; }
+    .btn:hover { background:#2a4050; }
+    .btn.primary { background:#b5d7e6; color:#142532; border-color:#b5d7e6; }
+    .btn.primary:hover { background:#d2eaf5; }
+    .btn.ghost { background:transparent; border-color:#35414c; color:#aec0cc; }
+    .btn.small { padding:7px 10px; font-size:12px; white-space:nowrap; }
+    .intro { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin:32px 0 20px; }
+    h2 { font-size:17px; font-weight:620; margin:0; letter-spacing:-.25px; }
+    .hint { font-size:13px; color:#8898a6; margin:6px 0 0; }
+    .cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+    .card { background:#18212b; border:1px solid #2c3742; border-radius:14px; padding:20px; min-height:134px; }
+    .eyebrow { font-size:12px; color:#97a8b5; letter-spacing:.02em; }
+    .amount { margin:18px 0 7px; font-size:clamp(20px,2.4vw,29px); font-weight:650; letter-spacing:-1px; font-variant-numeric:tabular-nums; word-break:break-word; }
+    .positive { color:#bbdcd1; }
+    .negative { color:#e1b2ae; }
+    .smallnote { color:#7f919f; font-size:12px; }
+    .layout { display:grid; grid-template-columns:1.65fr 1fr; gap:16px; margin-top:24px; align-items:start; }
+    .panel { background:#18212b; border:1px solid #2b3743; border-radius:14px; padding:22px; min-width:0; }
+    .panel-head { display:flex; align-items:start; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+    .scroll { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; color:#93a4b1; padding:12px 8px; font-size:12px; font-weight:550; border-bottom:1px solid #35404b; }
+    td { padding:15px 8px; border-bottom:1px solid #293440; vertical-align:middle; }
+    tbody tr:last-child td { border-bottom:0 }
+    .muted { font-size:12px; color:#92a1af; }
+    .desc { font-weight:590; }
+    .tag { padding:5px 9px; border:1px solid #40515e; border-radius:100px; display:inline-block; font-size:11px; color:#b1c5d0; }
+    .tag.pago { color:#afd8c6; border-color:#3e6457; }
+    .tag.atrasado { color:#e8b6b2; border-color:#72524e; }
+    .form { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+    .field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+    .field label { font-size:12px; color:#a7b6c2; }
+    .field input, .field select { width:100%; }
+    .full { grid-column:1 / -1; }
+    .form-actions { display:flex; justify-content:flex-end; margin-top:17px; }
+    .empty { text-align:center; padding:42px 10px; color:#9aabb6; font-size:14px; }
+    .notice { margin-top:16px; padding:11px 13px; font-size:13px; border-radius:9px; background:#243340; color:#bcd9e8; display:none; }
+    .notice.error { display:block; background:#422d30; color:#f1c6c6; }
+    .notice.success { display:block; }
+    .footer { border-top:1px solid #283441; margin-top:35px; padding-top:18px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; color:#7f919e; font-size:12px; }
+    @media(max-width:900px) { .cards { grid-template-columns:repeat(2,1fr); } .layout { grid-template-columns:1fr; } }
+    @media(max-width:560px) { .shell { padding:20px 14px 50px; } .cards { grid-template-columns:1fr; } .form { grid-template-columns:1fr; } .top { align-items:stretch } .controls { justify-content:space-between; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand"><div class="mark">PJ</div><div>
+        <h1>Auxiliar PJ</h1><p class="sub">Organização financeira para profissionais e empresas</p>
+      </div></div>
+      <div class="controls">
+        <label class="muted" for="periodo">Competência</label>
+        <input id="periodo" type="month" aria-label="Mês de competência" />
+        <a class="btn ghost" id="exportar" href="/api/pj/exportar.csv">Exportar CSV</a>
+      </div>
+    </header>
+
+    <div class="intro"><div><h2>Visão do mês</h2><p class="hint">Acompanhe o que entrou, o que saiu e o que ainda precisa ser pago.</p></div></div>
+    <section class="cards" aria-label="Indicadores financeiros">
+      <div class="card"><div class="eyebrow">Receitas previstas</div><div id="receitas" class="amount positive">—</div><div class="smallnote">Competência selecionada</div></div>
+      <div class="card"><div class="eyebrow">Despesas previstas</div><div id="despesas" class="amount negative">—</div><div class="smallnote">Competência selecionada</div></div>
+      <div class="card"><div class="eyebrow">Saldo previsto</div><div id="saldo" class="amount">—</div><div class="smallnote">Receitas menos despesas</div></div>
+      <div class="card"><div class="eyebrow">Saldo realizado</div><div id="realizado" class="amount">—</div><div id="pendencias" class="smallnote">Pagamentos registrados</div></div>
+    </section>
+
+    <section class="layout">
+      <article class="panel">
+        <div class="panel-head"><div><h2>Lançamentos</h2><p class="hint" id="contagem">Carregando...</p></div>
+          <select id="filtro" aria-label="Filtrar lançamentos">
+            <option value="">Todos os status</option>
+            <option value="PENDENTE">Pendentes</option>
+            <option value="ATRASADO">Atrasados</option>
+            <option value="PAGO">Pagos</option>
+          </select>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody id="tabela"></tbody>
+          </table>
+        </div>
+        <div id="vazio" class="empty" hidden>Nenhum lançamento neste período.</div>
+        <div class="controls" style="justify-content:flex-end;margin-top:14px">
+          <button id="anterior" class="btn small ghost" type="button">Anterior</button>
+          <span class="muted" id="paginacao"></span>
+          <button id="proximo" class="btn small ghost" type="button">Próximo</button>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head"><div><h2>Novo lançamento</h2><p class="hint">Registre receitas, despesas e compromissos.</p></div></div>
+        <form id="form" class="form">
+          <div class="field full"><label for="descricao">Descrição</label><input id="descricao" maxlength="200" required placeholder="Ex.: Serviço de desenvolvimento" /></div>
+          <div class="field"><label for="tipo">Tipo</label><select id="tipo"><option value="RECEITA">Receita</option><option value="DESPESA">Despesa</option></select></div>
+          <div class="field"><label for="valor">Valor (R$)</label><input id="valor" type="number" step="0.01" min="0.01" max="100000000" required placeholder="0,00" /></div>
+          <div class="field"><label for="categoria">Categoria</label><input id="categoria" maxlength="80" required placeholder="Serviços, software..." /></div>
+          <div class="field"><label for="contraparte">Cliente / fornecedor</label><input id="contraparte" maxlength="120" placeholder="Opcional" /></div>
+          <div class="field"><label for="competencia">Competência</label><input id="competencia" type="date" required /></div>
+          <div class="field"><label for="vencimento">Vencimento</label><input id="vencimento" type="date" /></div>
+          <div class="field full"><label for="pagamento">Data do pagamento (opcional)</label><input id="pagamento" type="date" /></div>
+          <div class="form-actions full"><button class="btn primary" type="submit">Salvar lançamento</button></div>
+        </form>
+        <div id="notice" class="notice" role="status" aria-live="polite"></div>
+      </article>
+    </section>
+
+    <footer class="footer"><span>Auxiliar PJ · Protótipo local</span><span>Relatórios gerenciais não substituem contabilidade nem obrigações fiscais.</span></footer>
+  </main>
+  <script>
+    (() => {
+      const $ = id => document.getElementById(id);
+      const money = value => new Intl.NumberFormat('pt-BR', {style:'currency',currency:'BRL'}).format(Number(value || 0));
+      const today = new Date();
+      const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      $('periodo').value = localDate.slice(0, 7);
+      $('competencia').value = localDate;
+      let page = 1, total = 0, limit = 10;
+      const period = () => { const [ano, mes] = $('periodo').value.split('-'); return {ano, mes}; };
+      const qs = () => { const {ano, mes} = period(); return new URLSearchParams({ano, mes}); };
+      function notify(message, error=false) {
+        const el=$('notice'); el.textContent=message; el.className='notice '+(error?'error':'success');
+      }
+      async function request(url, options) {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'Não foi possível completar a operação ('+res.status+').');
+        }
+        if (res.status===204) return null;
+        return res.json();
+      }
+      function cell(tr, text, cls='') {
+        const td=document.createElement('td'); td.textContent=String(text??''); if(cls) td.className=cls; tr.append(td); return td;
+      }
+      function row(item) {
+        const tr=document.createElement('tr');
+        const descr=cell(tr,item.descricao,'desc');
+        if(item.contraparte) {
+          const sub=document.createElement('div'); sub.className='muted'; sub.textContent=item.contraparte; descr.append(sub);
+        }
+        cell(tr,item.tipo==='RECEITA'?'Receita':'Despesa');
+        cell(tr,money(item.valor));
+        const status=cell(tr,'');
+        const tag=document.createElement('span'); tag.className='tag '+item.status.toLowerCase(); tag.textContent=item.status; status.append(tag);
+        const action=cell(tr,'');
+        const btn=document.createElement('button'); btn.type='button'; btn.className='btn small ghost';
+        btn.textContent=item.status==='PAGO'?'Reabrir':'Marcar pago';
+        btn.addEventListener('click',async()=>{
+          btn.disabled=true;
+          try {
+            await request('/api/pj/lancamentos/'+item.id+'/pagamento',{
+              method:'PUT',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({dataPagamento:item.status==='PAGO'?null:localDate})
+            });
+            await load();
+          }catch(e){notify(e.message,true);}finally{btn.disabled=false;}
+        });
+        action.append(btn);
+        return tr;
+      }
+      async function load(){
+        try {
+          const filter=$('filtro').value, params=qs(); params.set('page',page); params.set('limit',limit);
+          if(filter) params.set('status',filter);
+          const [summary,data]=await Promise.all([
+            request('/api/pj/resumo?'+qs()),request('/api/pj/lancamentos?'+params)
+          ]);
+          $('receitas').textContent=money(summary.receitasPrevistas);
+          $('despesas').textContent=money(summary.despesasPrevistas);
+          $('saldo').textContent=money(summary.saldoPrevisto);
+          $('realizado').textContent=money(summary.saldoRealizado);
+          $('pendencias').textContent=summary.quantidadeAtrasada+' compromisso(s) em atraso';
+          total=data.total;
+          $('tabela').replaceChildren(...data.items.map(row));
+          $('contagem').textContent=total+' lançamento(s) encontrado(s)';
+          $('vazio').hidden=total!==0;
+          $('anterior').disabled=page<=1;
+          $('proximo').disabled=page*limit>=total;
+          $('paginacao').textContent='Página '+page+' de '+Math.max(1,Math.ceil(total/limit));
+          $('exportar').href='/api/pj/exportar.csv?'+qs();
+        }catch(e){notify(e.message,true);$('contagem').textContent='Falha ao carregar';}
+      }
+      $('periodo').addEventListener('change',()=>{page=1; load();});
+      $('filtro').addEventListener('change',()=>{page=1; load();});
+      $('anterior').addEventListener('click',()=>{if(page>1){page--;load();}});
+      $('proximo').addEventListener('click',()=>{if(page*limit<total){page++;load();}});
+      $('form').addEventListener('submit',async e=>{
+        e.preventDefault();
+        const btn=e.submitter; btn.disabled=true;
+        const body={
+          descricao:$('descricao').value, tipo:$('tipo').value,
+          categoria:$('categoria').value,contraparte:$('contraparte').value,
+          valor:Number($('valor').value), competencia:$('competencia').value,
+          vencimento:$('vencimento').value||null, dataPagamento:$('pagamento').value||null
+        };
+        try{
+          await request('/api/pj/lancamentos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+          $('form').reset(); $('competencia').value=localDate; page=1;
+          notify('Lançamento salvo com sucesso.'); await load();
+        }catch(error){notify(error.message,true);}finally{btn.disabled=false;}
+      });
+      load();
+    })();
+  </script>
+</body>
+</html>
