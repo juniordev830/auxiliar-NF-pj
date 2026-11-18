@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -31,6 +32,22 @@ def test_csv_pj_rejects_missing_columns(tmp_path):
     csv.write_text("Data;Tipo\n2026-11-01;RECEITA\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Colunas obrigatórias ausentes"):
         carregar_dados(str(csv), 0)
+
+
+def test_csv_pj_keeps_valid_dates_with_and_without_time(tmp_path):
+    csv = tmp_path / "datas.csv"
+    csv.write_text(
+        "Data;Categoria;Valor\n"
+        "2026-11-03;Serviços;100.00\n"
+        "2026-12-04 12:30:00;Serviços;200.00\n"
+        "sem data;Serviços;300.00\n",
+        encoding="utf-8",
+    )
+
+    dates = carregar_dados(str(csv), 0)["Data"]
+    assert dates.iloc[0] == pd.Timestamp("2026-11-03")
+    assert dates.iloc[1] == pd.Timestamp("2026-12-04 12:30:00")
+    assert pd.isna(dates.iloc[2])
 
 
 @pytest.mark.parametrize("alias", [False, True])
