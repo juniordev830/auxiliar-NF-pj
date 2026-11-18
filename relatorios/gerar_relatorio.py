@@ -55,7 +55,7 @@ def carregar_dados(caminho: str, aba) -> pd.DataFrame:
 
     # converte a coluna de data, se existir
     if COLUNA_DATA and COLUNA_DATA in df.columns:
-        df[COLUNA_DATA] = pd.to_datetime(df[COLUNA_DATA], errors="coerce")
+        df[COLUNA_DATA] = pd.to_datetime(df[COLUNA_DATA], format="mixed", errors="coerce")
 
     return df
 
