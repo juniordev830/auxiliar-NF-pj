@@ -219,8 +219,15 @@ def main():
     args = parser.parse_args()
 
     caminho = Path(args.arquivo)
+    saida = Path(args.saida)
     if not caminho.exists():
         parser.error(f"Arquivo não encontrado: {caminho}")
+
+    try:
+        if saida.exists() and saida.samefile(caminho):
+            parser.error("O arquivo de saída deve ser diferente do arquivo de entrada.")
+    except OSError as error:
+        parser.error(str(error))
 
     print(f"Lendo {caminho} ...")
     try:
@@ -239,7 +246,10 @@ def main():
     print("Montando relatório...")
     html = montar_html(df, imgs, origem=str(caminho))
 
-    Path(args.saida).write_text(html, encoding="utf-8")
+    try:
+        saida.write_text(html, encoding="utf-8")
+    except OSError as error:
+        parser.error(str(error))
     print(f"Relatório salvo em: {args.saida}")
 
 
