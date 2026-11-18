@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import sys
 import pytest
 
@@ -30,3 +31,26 @@ def test_csv_pj_rejects_missing_columns(tmp_path):
     csv.write_text("Data;Tipo\n2026-11-01;RECEITA\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Colunas obrigatórias ausentes"):
         carregar_dados(str(csv), 0)
+
+
+@pytest.mark.parametrize("alias", [False, True])
+def test_cli_preserva_entrada_quando_saida_e_o_mesmo_arquivo(tmp_path, alias):
+    csv = tmp_path / "pj.csv"
+    original = b"Data;Categoria;Valor\n2026-11-01;Servicos;100.00\n"
+    csv.write_bytes(original)
+    output = csv
+    if alias:
+        output = tmp_path / "alias.html"
+        output.hardlink_to(csv)
+
+    script = Path(__file__).resolve().parents[1] / "gerar_relatorio.py"
+    result = subprocess.run(
+        [sys.executable, str(script), str(csv), "--saida", str(output)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "deve ser diferente" in result.stderr
+    assert csv.read_bytes() == original
