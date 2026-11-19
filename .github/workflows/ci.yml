@@ -29,10 +29,13 @@ jobs:
           fi
       - name: Build
         run: dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release --no-restore
+      - name: Verificar migrações com bancos SQLite legados
+        run: python3 tests/test_sqlite_upgrade.py
       - name: Smoke-test API validation
         shell: bash
         run: |
           export ConnectionStrings__DefaultConnection="Data Source=${RUNNER_TEMP}/controle-gastos-smoke.db"
+          export ConnectionStrings__AuxiliarPj="Data Source=${RUNNER_TEMP}/auxiliar-pj-smoke.db"
           dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/api.log" 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true' EXIT
@@ -71,6 +74,7 @@ jobs:
           GASTOS_ADMIN_TOKEN: "ci-admin-token-for-tests-only-0123456789abcdef"
         run: |
           export ConnectionStrings__DefaultConnection="Data Source=${RUNNER_TEMP}/controle-gastos-auth.db"
+          export ConnectionStrings__AuxiliarPj="Data Source=${RUNNER_TEMP}/auxiliar-pj-auth.db"
           dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/api-auth.log" 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true' EXIT
