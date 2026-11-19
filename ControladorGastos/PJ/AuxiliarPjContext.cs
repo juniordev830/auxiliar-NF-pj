@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 namespace ControladorGastos.PJ;
 
 // Contexto isolado para preservar o banco residencial já existente.
-// Trocar EnsureCreated por migrations antes de operar em produção.
 public sealed class AuxiliarPjContext(DbContextOptions<AuxiliarPjContext> options) : DbContext(options)
 {
     public DbSet<LancamentoPj> Lancamentos => Set<LancamentoPj>();
