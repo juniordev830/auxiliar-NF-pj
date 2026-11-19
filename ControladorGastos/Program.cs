@@ -78,13 +78,12 @@ if (tokenMode)
 }
 
 
-// Bootstrap simples para o protótipo local. Para produção, substitua por migrations versionadas.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ControladorGastosContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
     var pj = scope.ServiceProvider.GetRequiredService<AuxiliarPjContext>();
-    pj.Database.EnsureCreated();
+    pj.Database.Migrate();
 }
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));

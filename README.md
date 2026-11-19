@@ -26,6 +26,10 @@ O módulo legado continua com seu banco `controlador-gastos.db`; os lançamentos
 `auxiliar-pj.db`, mantendo os dados residenciais separados. Não há migração automática
 dos lançamentos do módulo residencial para o PJ.
 
+### Atualização dos bancos locais
+
+A aplicação aplica as migrações do EF Core ao iniciar. A primeira migração de cada banco registra o esquema da versão anterior e mantém os dados criados por ela. Antes de atualizar uma instalação existente, feche a aplicação e faça uma cópia de segurança dos dois arquivos SQLite. Depois da atualização, confira o resumo mensal e gere novamente o CSV.
+
 ## Funcionalidades implementadas
 
 - Lançamentos de **receitas e despesas** com categoria, contraparte, competência, vencimento e valor;
