@@ -16,11 +16,13 @@ Requisito: **.NET SDK 8**. Na raiz do repositório:
 
 ```bash
 dotnet restore ControladorGastos/ControladorGastos.csproj
+export GASTOS_READ_TOKEN="$(openssl rand -hex 32)"
+export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
 Abra **http://127.0.0.1:5000**. O painel PJ é uma página HTML responsiva servida pela
-API ASP.NET Core; não exige instalar Node ou iniciar frontend separado.
+API ASP.NET Core; não exige instalar Node ou iniciar frontend separado. Para usar o painel, cole o token de administração no campo de acesso; o token fica somente na memória do navegador.
 
 O módulo legado continua com seu banco `controlador-gastos.db`; os lançamentos PJ ficam em
 `auxiliar-pj.db`, mantendo os dados residenciais separados. Não há migração automática
@@ -52,7 +54,7 @@ A aplicação aplica as migrações do EF Core ao iniciar. A primeira migração
 Exemplo de lançamento:
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/pj/lancamentos \
+curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -X POST http://127.0.0.1:5000/api/pj/lancamentos \
   -H "Content-Type: application/json" \
   -d '{"descricao":"Projeto web","tipo":"RECEITA","categoria":"Serviços","valor":1500.00,"competencia":"2026-11-12T00:00:00","vencimento":"2026-11-20T00:00:00","dataPagamento":null,"contraparte":"Cliente exemplo"}'
 ```
@@ -118,7 +120,7 @@ A API informa as rotas em `http://localhost:5000` ou na URL local exibida pelo A
 Exemplo para criar pessoa:
 
 ```bash
-curl -X POST http://localhost:5000/api/pessoas \\
+curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -X POST http://localhost:5000/api/pessoas \\
   -H 'Content-Type: application/json' \\
   -d '{"nome":"Ana","idade":30}'
 ```
@@ -126,7 +128,7 @@ curl -X POST http://localhost:5000/api/pessoas \\
 Exemplo para criar despesa:
 
 ```bash
-curl -X POST http://localhost:5000/api/transacoes \\
+curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -X POST http://localhost:5000/api/transacoes \\
   -H 'Content-Type: application/json' \\
   -d '{"descricao":"Mercado","valor":125.90,"tipo":"DESPESA","pessoaId":1}'
 ```
@@ -137,11 +139,11 @@ curl -X POST http://localhost:5000/api/transacoes \\
 - O valor deve ser positivo; valores monetários são representados como decimal.
 - Menores de 18 anos não podem registrar receitas.
 - A remoção de uma pessoa remove suas transações relacionadas.
-- O módulo residencial ainda não possui frontend próprio nem login individual; o módulo PJ possui um painel HTML local. Tokens de leitura/administração podem ser ativados apenas para uso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
+- O módulo residencial ainda não possui frontend próprio nem login individual; o módulo PJ possui um painel HTML local. Tokens de leitura/administração são obrigatórios, inclusive no acesso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
 
-## Proteção opcional por tokens (acesso local)
+## Proteção obrigatória por tokens (acesso local)
 
-Para ativar proteção de todas as rotas `/api/*`, exceto `/api/health`, configure **os dois** segredos por variáveis de ambiente antes de iniciar:
+A aplicação não inicia sem **os dois** segredos configurados. Todas as rotas `/api/*`, exceto `/api/health`, exigem autenticação:
 
 ```bash
 # Gere valores aleatórios diferentes; não copie tokens de exemplos ou do CI.
@@ -150,7 +152,7 @@ export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
-Ambos precisam ter pelo menos 32 bytes e ser diferentes. Com a proteção ativa:
+Ambos precisam ter pelo menos 32 bytes e ser diferentes. Depois de iniciar:
 
 - O token de leitura permite `GET` e `HEAD` nas rotas `/api/*`.
 - O token de administração permite leitura, criação e exclusão.
@@ -158,7 +160,7 @@ Ambos precisam ter pelo menos 32 bytes e ser diferentes. Com a proteção ativa:
 - Envie o token em `Authorization: Bearer <seu-token>`. Exemplo: `curl -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/pessoas`.
 - Não publique, registre em logs, versione ou exponha os segredos em JavaScript do navegador.
 
-Sem essas duas variáveis, o protótipo continua **sem autenticação** e somente em `127.0.0.1`, para preservar o uso local existente. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
+Sem essas duas variáveis, a aplicação encerra a inicialização, sem expor dados financeiros. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
 
 ## Testes e CI
 
