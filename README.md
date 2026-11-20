@@ -90,7 +90,7 @@ API inicial executável para registrar pessoas da residência, receitas e despes
 
 ## Estado real do projeto
 
-O backend ASP.NET Core (.NET 8) está implementado nesta branch. A interface React ainda não está incluída; os documentos antigos descreviam uma aplicação planejada e não devem ser interpretados como prova de que o frontend existe.
+O módulo residencial oferece uma API ASP.NET Core (.NET 8) protegida por tokens. O painel HTML servido em `/` pertence ao módulo Auxiliar PJ; ele não substitui uma interface própria para a gestão residencial.
 
 ## Requisitos
 
@@ -161,6 +161,10 @@ Ambos precisam ter pelo menos 32 bytes e ser diferentes. Depois de iniciar:
 - Não publique, registre em logs, versione ou exponha os segredos em JavaScript do navegador.
 
 Sem essas duas variáveis, a aplicação encerra a inicialização, sem expor dados financeiros. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
+
+## Diagnóstico de conexão no Windows
+
+Na raiz do repositório, execute `scripts/diagnosticar-conexao.cmd` em CMD ou PowerShell. O script verifica se o SDK .NET está no PATH, consulta `/api/health` e confirma se o painel local está sendo servido. Ele não altera a política de execução do PowerShell nem imprime tokens.
 
 ## Testes e CI
 
