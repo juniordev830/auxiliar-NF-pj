@@ -31,9 +31,21 @@ jobs:
         run: dotnet build ControladorGastos/ControladorGastos.csproj --configuration Release --no-restore
       - name: Verificar migrações com bancos SQLite legados
         run: python3 tests/test_sqlite_upgrade.py
-      - name: Smoke-test API validation
+      - name: Reject startup without tokens
         shell: bash
         run: |
+          if dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "$RUNNER_TEMP/unauthenticated-startup.log" 2>&1; then
+            echo "::error::A API iniciou sem tokens obrigatórios."
+            exit 1
+          fi
+          grep -q "Configure GASTOS_READ_TOKEN" "$RUNNER_TEMP/unauthenticated-startup.log"
+      - name: Smoke-test API validation
+        shell: bash
+        env:
+          GASTOS_READ_TOKEN: "ci-read-token-for-tests-only-0123456789abcdef"
+          GASTOS_ADMIN_TOKEN: "ci-admin-token-for-tests-only-0123456789abcdef"
+        run: |
+          curl() { command curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" "$@"; }
           export ConnectionStrings__DefaultConnection="Data Source=${RUNNER_TEMP}/controle-gastos-smoke.db"
           export ConnectionStrings__AuxiliarPj="Data Source=${RUNNER_TEMP}/auxiliar-pj-smoke.db"
           dotnet run --project ControladorGastos/ControladorGastos.csproj --configuration Release --no-build > "${RUNNER_TEMP}/api.log" 2>&1 &

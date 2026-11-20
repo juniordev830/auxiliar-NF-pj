@@ -75,6 +75,9 @@
       <div class="controls">
         <label class="muted" for="periodo">Competência</label>
         <input id="periodo" type="month" aria-label="Mês de competência" />
+        <label class="muted" for="access-token">Token de acesso</label>
+        <input id="access-token" type="password" autocomplete="off" placeholder="Cole seu token" aria-label="Token de acesso" />
+        <button id="authorize" class="btn small" type="button">Acessar</button>
         <a class="btn ghost" id="exportar" href="/api/pj/exportar.csv">Exportar CSV</a>
       </div>
     </header>
@@ -139,13 +142,18 @@
       $('periodo').value = localDate.slice(0, 7);
       $('competencia').value = localDate;
       let page = 1, total = 0, limit = 10;
+      let accessToken = ''; // Apenas em memória; nunca salvo em localStorage.
       const period = () => { const [ano, mes] = $('periodo').value.split('-'); return {ano, mes}; };
       const qs = () => { const {ano, mes} = period(); return new URLSearchParams({ano, mes}); };
       function notify(message, error=false) {
         const el=$('notice'); el.textContent=message; el.className='notice '+(error?'error':'success');
       }
       async function request(url, options) {
-        const res = await fetch(url, options);
+        if (!accessToken) throw new Error('Informe o token de acesso antes de continuar.');
+        const res = await fetch(url, {
+          ...options,
+          headers: { ...(options?.headers || {}), Authorization: 'Bearer ' + accessToken }
+        });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || 'Não foi possível completar a operação ('+res.status+').');
@@ -204,6 +212,32 @@
           $('exportar').href='/api/pj/exportar.csv?'+qs();
         }catch(e){notify(e.message,true);$('contagem').textContent='Falha ao carregar';}
       }
+      $('authorize').addEventListener('click', () => {
+        accessToken = $('access-token').value.trim();
+        $('access-token').value = '';
+        if (!accessToken) { notify('Informe um token de acesso válido.', true); return; }
+        page = 1;
+        load();
+      });
+      $('access-token').addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); $('authorize').click(); }
+      });
+      $('exportar').addEventListener('click', async event => {
+        event.preventDefault();
+        if (!accessToken) { notify('Informe o token antes de exportar.', true); return; }
+        try {
+          const response = await fetch($('exportar').href, { headers: { Authorization: 'Bearer ' + accessToken } });
+          if (!response.ok) throw new Error('Exportação não autorizada (' + response.status + ').');
+          const fileUrl = URL.createObjectURL(await response.blob());
+          const anchor = document.createElement('a');
+          anchor.href = fileUrl;
+          anchor.download = 'lancamentos-pj.csv';
+          document.body.append(anchor);
+          anchor.click();
+          anchor.remove();
+          setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+        } catch (error) { notify(error.message, true); }
+      });
       $('periodo').addEventListener('change',()=>{page=1; load();});
       $('filtro').addEventListener('change',()=>{page=1; load();});
       $('anterior').addEventListener('click',()=>{if(page>1){page--;load();}});
@@ -224,7 +258,7 @@
           notify('Lançamento salvo com sucesso.'); await load();
         }catch(error){notify(error.message,true);}finally{btn.disabled=false;}
       });
-      load();
+      $('contagem').textContent = 'Informe seu token de acesso para carregar os lançamentos.';
     })();
   </script>
 </body>

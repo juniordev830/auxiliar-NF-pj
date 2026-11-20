@@ -13,11 +13,11 @@ builder.Services.AddDbContext<AuxiliarPjContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("AuxiliarPj")
         ?? "Data Source=auxiliar-pj.db"));
 
-// Proteção opcional para um operador local: não substitui contas e autorização por usuário.
+// Tokens obrigatórios para impedir acesso não autenticado; não substituem contas por usuário.
 var readToken = builder.Configuration["GASTOS_READ_TOKEN"];
 var adminToken = builder.Configuration["GASTOS_ADMIN_TOKEN"];
 var tokenMode = !string.IsNullOrEmpty(readToken) || !string.IsNullOrEmpty(adminToken);
-if (tokenMode && (
+if (!tokenMode || (
     string.IsNullOrWhiteSpace(readToken) ||
     string.IsNullOrWhiteSpace(adminToken) ||
     Encoding.UTF8.GetByteCount(readToken) < 32 ||

@@ -10,12 +10,14 @@ import tempfile
 import time
 import unittest
 from urllib.error import URLError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1] / "ControladorGastos"
 APP = ROOT / "bin" / "Release" / "net8.0" / "ControladorGastos.dll"
 BASE_URL = "http://127.0.0.1:5000"
+READ_TOKEN = "ci-read-token-for-tests-only-0123456789abcdef"
+ADMIN_TOKEN = "ci-admin-token-for-tests-only-0123456789abcdef"
 
 
 def seed_legacy(residential, pj):
@@ -49,7 +51,7 @@ def seed_legacy(residential, pj):
 
 
 def request(path):
-    with urlopen(BASE_URL + path, timeout=2) as response:
+    with urlopen(Request(BASE_URL + path, headers={"Authorization": f"Bearer {READ_TOKEN}"}), timeout=2) as response:
         return response.read()
 
 
@@ -63,8 +65,8 @@ class LegacyUpgradeTest(unittest.TestCase):
                 **os.environ,
                 "ConnectionStrings__DefaultConnection": f"Data Source={residential}",
                 "ConnectionStrings__AuxiliarPj": f"Data Source={pj}",
-                "GASTOS_READ_TOKEN": "",
-                "GASTOS_ADMIN_TOKEN": "",
+                "GASTOS_READ_TOKEN": READ_TOKEN,
+                "GASTOS_ADMIN_TOKEN": ADMIN_TOKEN,
             }
 
             for startup in range(2):
