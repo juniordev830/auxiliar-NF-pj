@@ -44,9 +44,9 @@ def seed_legacy(residential, pj):
                 DataPagamento TEXT NULL, CriadoEm TEXT NOT NULL);
             CREATE INDEX IX_Lancamentos_Competencia ON Lancamentos (Competencia);
             INSERT INTO Lancamentos VALUES (
-                7, 'Consultoria', 'RECEITA', 'Serviços', 'Cliente teste', '1500.75',
-                '2026-11-02 00:00:00', '2026-11-15 00:00:00', '2026-11-10 00:00:00',
-                '2026-11-02 00:00:00');
+                7, '=HYPERLINK("https://example.invalid","abrir")', 'RECEITA', 'Serviços',
+                '+SUM(1,1)', '1500.75', '2026-11-02 00:00:00', '2026-11-15 00:00:00',
+                '2026-11-10 00:00:00', '2026-11-02 00:00:00');
         """)
 
 
@@ -98,6 +98,9 @@ class LegacyUpgradeTest(unittest.TestCase):
                         rows = list(csv.DictReader(exported.splitlines(), delimiter=";"))
                         self.assertEqual(len(rows), 1)
                         self.assertEqual((rows[0]["Valor"], rows[0]["Pagamento"]), ("1500.75", "2026-11-10"))
+                        # Text fields that begin with spreadsheet formulas must be neutralized.
+                        self.assertEqual(rows[0]["Descricao"], "'=HYPERLINK(\"https://example.invalid\",\"abrir\")")
+                        self.assertEqual(rows[0]["Contraparte"], "'+SUM(1,1)")
                     finally:
                         process.terminate()
                         try:
