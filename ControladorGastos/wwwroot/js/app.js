@@ -107,6 +107,10 @@
         edit.type = 'button'; edit.className = 'btn small ghost'; edit.textContent = 'Editar';
         edit.addEventListener('click', () => beginEdit(item));
         action.append(edit);
+        const history = document.createElement('a');
+        history.className = 'btn small ghost'; history.textContent = 'Histórico';
+        history.href = '/historico.html?id=' + encodeURIComponent(item.id);
+        action.append(history);
         return tr;
       }
       async function load(){
