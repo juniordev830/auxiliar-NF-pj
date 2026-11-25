@@ -106,6 +106,7 @@ using (var scope = app.Services.CreateScope())
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuxiliarPjEndpoints();
 app.MapFluxoCaixaEndpoints();
+app.MapContasAVencerEndpoints();
 
 app.MapGet("/api/pessoas", async (ControladorGastosContext db) =>
     Results.Ok(await db.Pessoas.AsNoTracking()
