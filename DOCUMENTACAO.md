@@ -1,487 +1,127 @@
-# 📚 Documentação - Sistema de Controle de Gastos Residenciais
+# Documentação técnica — Auxiliar PJ
 
-## 🎯 Visão Geral
+## Arquitetura
 
-Sistema completo para gerenciamento de receitas e despesas residenciais, desenvolvido com:
-- **Backend**: ASP.NET Core (.NET 8) com C#
-- **Frontend**: React com TypeScript
-- **Banco de Dados**: SQLite (persistência local)
+A aplicação usa ASP.NET Core Minimal APIs em .NET 8. Não há controllers MVC, camada de services separada, frontend React ou servidor Node. O painel PJ em HTML/CSS/JavaScript utiliza fetch e é servido por arquivos estáticos na mesma origem da API.
 
----
+- [Program.cs](ControladorGastos/Program.cs): inicialização, tokens, migrações, rotas residenciais e health.
+- [AuxiliarPjEndpoints.cs](ControladorGastos/PJ/AuxiliarPjEndpoints.cs): rotas PJ, validações, resumo e CSV.
+- [AuxiliarPjContext.cs](ControladorGastos/PJ/AuxiliarPjContext.cs): modelo PJ, precisão monetária e índice de competência.
+- [ControladorGastosContext.cs](ControladorGastos/Data/ControladorGastosContext.cs): modelo residencial e relacionamento pessoa/transações.
+- [index.html](ControladorGastos/wwwroot/index.html): painel PJ.
+- [relatórios](relatorios/README.md): geração local de HTML com Python.
+- [cliente Swift](swift-client/README.md): acesso somente leitura às rotas residenciais.
 
-## 📋 Tabela de Conteúdos
+## Inicialização e configuração
 
-1. [Arquitetura do Sistema](#arquitetura-do-sistema)
-2. [Instalação e Execução](#instalação-e-execução)
-3. [Funcionalidades Implementadas](#funcionalidades-implementadas)
-4. [Regras de Negócio](#regras-de-negócio)
-5. [Estrutura de Pastas](#estrutura-de-pastas)
-6. [API Endpoints](#api-endpoints)
-7. [Fluxo de Dados](#fluxo-de-dados)
-8. [Padrões e Boas Práticas](#padrões-e-boas-práticas)
+Siga o [README](README.md) para configurar tokens e executar no Windows ou Linux/macOS. O único endereço de escuta configurado pelo código é http://127.0.0.1:5000. Não abra portas nem publique a API.
 
----
+| Configuração | Finalidade |
+| --- | --- |
+| GASTOS_READ_TOKEN | Leitura GET/HEAD |
+| GASTOS_ADMIN_TOKEN | Leitura e escrita |
+| ConnectionStrings__DefaultConnection | Conexão SQLite residencial opcional |
+| ConnectionStrings__AuxiliarPj | Conexão SQLite PJ opcional |
 
-## 🏗️ Arquitetura do Sistema
+Os tokens são obrigatórios, distintos e têm no mínimo 32 bytes UTF-8. São comparados em tempo constante quando os tamanhos coincidem. O painel não os persiste. O servidor não inicia com configuração inválida.
 
-### Camadas da Aplicação
+## Contrato HTTP
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    FRONTEND (React)                      │
-│  Componentes, Estado, Interface do Usuário             │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP/JSON
-┌────────────────────▼────────────────────────────────────┐
-│                   API (ASP.NET Core)                    │
-│  Controllers, Services, DTOs, Validações              │
-└────────────────────┬────────────────────────────────────┘
-                     │ Entity Framework Core
-┌────────────────────▼────────────────────────────────────┐
-│                 Banco de Dados (SQLite)                │
-│  Tabelas: Pessoas, Transações                         │
-└─────────────────────────────────────────────────────────┘
-```
+Base: `http://127.0.0.1:5000`. Use JSON e o cabeçalho Authorization: Bearer com o token apropriado. Para POST e PUT envie Content-Type: application/json.
 
-### Padrão MVC/Service Layer
+| Código HTTP | Significado |
+| --- | --- |
+| 200 | Consulta ou atualização bem-sucedida |
+| 201 | Registro criado |
+| 204 | Exclusão concluída |
+| 400 | Dados ou filtros inválidos |
+| 401 | Token ausente/inválido |
+| 403 | Leitor sem permissão de escrita |
+| 404 | Registro não encontrado nas operações por ID |
 
-- **Controllers**: Recebem requisições HTTP e chamam serviços
-- **Services**: Contêm a lógica de negócio (validações, cálculos)
-- **Models**: Entidades do banco de dados
-- **DTOs**: Transferência de dados entre camadas
-- **DbContext**: Gerenciamento do banco de dados
+### API PJ
 
----
+| Método e rota | Parâmetros / efeito |
+| --- | --- |
+| GET /api/pj/resumo | ano e mes opcionais; padrão mês/ano UTC atual |
+| GET /api/pj/lancamentos | ano, mes, tipo, status, page, limit |
+| POST /api/pj/lancamentos | Criar lançamento com corpo JSON |
+| PUT /api/pj/lancamentos/{id}/pagamento | Atualizar dataPagamento; null reabre |
+| DELETE /api/pj/lancamentos/{id} | Excluir definitivamente |
+| GET /api/pj/exportar.csv | ano e mes opcionais; sem filtro retorna todos |
 
-## 🚀 Instalação e Execução
+Ano: 2000–2200; mês: 1–12 (exige ano). Página: 1–100000, limite: 1–100 (padrões 1 e 50). A listagem retorna objeto com items, total, page e limit, em ordem decrescente de competência e ID. Tipo: RECEITA ou DESPESA. Status: PAGO, PENDENTE ou ATRASADO. As listagens e exportações filtram pela competência.
 
-### Pré-requisitos
+Corpo de exemplo para criação, com dados fictícios:
 
-- .NET 8 SDK instalado
-- Node.js 16+ e npm/yarn instalados
-- Git
-
-### Backend (ASP.NET Core)
-
-```bash
-# Navegar para a pasta do backend
-cd ControladorGastos
-
-# Restaurar dependências
-dotnet restore
-
-# Executar a aplicação
-dotnet run
-
-# A API estará disponível em: http://localhost:5000
-```
-
-### Frontend (React)
-
-```bash
-# Navegar para a pasta do frontend
-cd frontend
-
-# Instalar dependências
-npm install
-
-# Iniciar servidor de desenvolvimento
-npm run dev
-
-# A aplicação estará disponível em: http://localhost:3000
-```
-
-### Usar a Aplicação
-
-1. Abrir http://localhost:3000 no navegador
-2. Navegar entre as abas: Pessoas, Transações, Relatório de Totais
-3. Os dados são persistidos automaticamente no banco de dados SQLite
-
----
-
-## ✨ Funcionalidades Implementadas
-
-### 1. Cadastro de Pessoas ✅
-- **Criar**: Nome e idade (validação de range 0-150)
-- **Listar**: Todas as pessoas com informações básicas
-- **Deletar**: Remove pessoa e TODAS suas transações (cascata)
-- **Validação**: Nome obrigatório, idade válida
-
-### 2. Cadastro de Transações ✅
-- **Criar**: Descrição, valor, tipo (Receita/Despesa), pessoa
-- **Listar**: Todas as transações com nome da pessoa
-- **Validação**:
-  - Pessoa deve existir no sistema
-  - Valor deve ser positivo
-  - **CRÍTICO**: Menores de idade (< 18 anos) SÓ podem registrar DESPESAS
-- **Tipos**:
-  - Receita (1): Entradas de recursos
-  - Despesa (2): Saídas de recursos
-
-### 3. Consulta de Totais ✅
-- **Por Pessoa**:
-  - Total de Receitas
-  - Total de Despesas
-  - Saldo (Receitas - Despesas)
-- **Geral do Sistema**:
-  - Total geral de Receitas
-  - Total geral de Despesas
-  - Saldo Líquido Geral
-- **Formatação**: Moeda brasileira (R$)
-
----
-
-## 📏 Regras de Negócio
-
-### ✋ Restrição de Menores de Idade (CRÍTICA)
-
-**Regra**: Pessoas menores de 18 anos **SÓ** podem registrar **DESPESAS**
-
-**Implementação**:
-1. **Backend**: Validação em `TransacaoService.CriarTransacaoAsync()`
-2. **Frontend**: Desabilitação de opção "Receita" e aviso visual
-3. **Banco de Dados**: Validação de dados no modelo
-
-```csharp
-// Validação no serviço
-if (!pessoa.EhMaiorDeIdade() && dto.Tipo == TipoTransacao.Receita)
-{
-    throw new ArgumentException(
-        $"A pessoa '{pessoa.Nome}' é menor de idade ({pessoa.Idade} anos) " +
-        $"e portanto não pode registrar receitas. Apenas despesas são permitidas."
-    );
-}
-```
-
-### 🗑️ Cascata de Deleção
-
-**Regra**: Ao deletar uma pessoa, todas suas transações são deletadas
-
-**Implementação**:
-- DbContext: `OnDelete(DeleteBehavior.Cascade)` configurado na relação
-- Banco de Dados: Constraint de foreign key com ON DELETE CASCADE
-
-### 💾 Persistência de Dados
-
-**Armazenamento**:
-- Arquivo SQLite: `controlador-gastos.db` na raiz do projeto
-- Dados mantidos após fechar a aplicação
-- Automático com Entity Framework Core
-
----
-
-## 📁 Estrutura de Pastas
-
-### Backend
-
-```
-ControladorGastos/
-├── Controllers/
-│   ├── PessoasController.cs      # Endpoints de pessoas
-│   └── TransacoesController.cs   # Endpoints de transações
-├── Models/
-│   ├── Pessoa.cs                # Modelo de Pessoa
-│   └── Transacao.cs             # Modelo e Enum de Transação
-├── Data/
-│   └── ControladorGastosContext.cs  # DbContext (mapeamento)
-├── Services/
-│   ├── IPessoaService.cs        # Interface do serviço
-│   ├── PessoaService.cs         # Implementação
-│   ├── ITransacaoService.cs     # Interface do serviço
-│   └── TransacaoService.cs      # Implementação (lógica de negócio)
-├── DTOs/
-│   ├── PessoaDTO.cs             # DTOs de Pessoa
-│   ├── TransacaoDTO.cs          # DTOs de Transação
-│   └── TotaisDTO.cs             # DTOs de Totais
-├── Program.cs                   # Configuração e startup
-├── ControladorGastos.csproj     # Arquivo de projeto
-└── controlador-gastos.db        # Banco de dados SQLite
-```
-
-### Frontend
-
-```
-frontend/
-├── src/
-│   ├── components/
-│   │   ├── CadastroPessoas.tsx       # Componente de pessoas
-│   │   ├── CadastroTransacoes.tsx    # Componente de transações
-│   │   └── RelatorioTotais.tsx       # Componente de relatório
-│   ├── services/
-│   │   └── api.ts                    # Serviço HTTP (axios)
-│   ├── types/
-│   │   └── index.ts                  # Interfaces TypeScript
-│   ├── styles/
-│   │   ├── Cadastro.css              # Estilos de cadastro
-│   │   └── RelatorioTotais.css       # Estilos do relatório
-│   ├── App.tsx                       # Componente principal
-│   ├── App.css                       # Estilos principais
-│   └── main.tsx                      # Ponto de entrada
-├── index.html                        # HTML root
-├── vite.config.ts                    # Configuração do Vite
-├── tsconfig.json                     # Configuração TypeScript
-├── tsconfig.node.json                # TypeScript para Node
-└── package.json                      # Dependências npm
-```
-
----
-
-## 🔌 API Endpoints
-
-### Pessoas
-
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/api/pessoas` | Lista todas as pessoas |
-| GET | `/api/pessoas/{id}` | Obtém uma pessoa específica |
-| POST | `/api/pessoas` | Cria uma nova pessoa |
-| DELETE | `/api/pessoas/{id}` | Deleta uma pessoa (cascata) |
-
-**Exemplo POST**:
 ```json
 {
-  "nome": "João Silva",
-  "idade": 30
+  "descricao": "Serviço de desenvolvimento",
+  "tipo": "RECEITA",
+  "categoria": "Serviços",
+  "contraparte": "Cliente exemplo",
+  "valor": 1500.00,
+  "competencia": "2026-11-12",
+  "vencimento": "2026-11-20",
+  "dataPagamento": null
 }
 ```
 
-### Transações
+Pagamento: `{"dataPagamento":"2026-11-20"}`. Reabertura: `{"dataPagamento":null}`.
 
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/api/transacoes` | Lista todas as transações |
-| GET | `/api/transacoes/pessoa/{pessoaId}` | Transações de uma pessoa |
-| POST | `/api/transacoes` | Cria uma nova transação |
-| GET | `/api/transacoes/totais/resumo` | Obtém relatório de totais |
+Regras:
+- Descrição obrigatória: 1–200 caracteres; categoria: 1–80; contraparte opcional: até 120.
+- Valor positivo, até 100 milhões, com no máximo duas casas decimais.
+- Datas de competência, vencimento e pagamento entre 2000 e 2200; as duas últimas são opcionais.
+- PAGO quando há data de pagamento; ATRASADO se não pago e vencimento anterior ao dia UTC atual; demais são PENDENTE.
+- Saldo previsto = receitas previstas − despesas previstas. Saldo realizado = receitas recebidas − despesas pagas, dentro da competência escolhida. Não equivale necessariamente ao fluxo bancário do mês.
+- O resumo ainda informa aReceber, aPagar, quantidade e valor em atraso e agrupamento por categoria/tipo.
+- CSV UTF-8 com BOM e delimitador ponto e vírgula; campos textuais recebem proteção contra fórmulas de planilha. O arquivo contém Data, Categoria, Valor, Tipo, Descricao, Status, Contraparte, Vencimento e Pagamento.
 
-**Exemplo POST**:
+### API residencial
+
+| Método e rota | Parâmetros / efeito |
+| --- | --- |
+| GET /api/pessoas | Lista de pessoas, ordenada por nome |
+| POST /api/pessoas | nome e idade |
+| DELETE /api/pessoas/{id} | Exclui pessoa e transações relacionadas |
+| GET /api/transacoes | page, limit, tipo, pessoaId, de, ate (opcionais) |
+| POST /api/transacoes | descricao, valor, tipo, pessoaId |
+| GET /api/transacoes/totais/mensal | ano e mes obrigatórios |
+| GET /api/transacoes/totais/resumo | Totais gerais e por pessoa |
+
+Exemplos de corpos JSON:
+
 ```json
-{
-  "descricao": "Salário",
-  "valor": 3000.00,
-  "tipo": 1,
-  "pessoaId": 1
-}
+{"nome":"Pessoa exemplo","idade":30}
 ```
 
-**Tipos de Transação**:
-- `1` = Receita
-- `2` = Despesa
-
----
-
-## 🔄 Fluxo de Dados
-
-### Criar Pessoa
-
-```
-Frontend (CadastroPessoas)
-    ↓ POST /api/pessoas
-Backend (PessoasController)
-    ↓ Chama
-PessoaService.CriarPessoaAsync()
-    ├─ Valida dados
-    └─ Persiste no DbContext
-    ↓ Salva no SQLite
-Frontend (recebe PessoaResponseDTO)
-    ↓
-Atualiza lista e aviso de sucesso
-```
-
-### Criar Transação
-
-```
-Frontend (CadastroTransacoes)
-    ↓ POST /api/transacoes
-Backend (TransacoesController)
-    ↓ Chama
-TransacaoService.CriarTransacaoAsync()
-    ├─ Valida existência da pessoa
-    ├─ CRÍTICO: Valida restrição de menores
-    ├─ Valida dados
-    └─ Persiste no DbContext
-    ↓ Salva no SQLite
-Frontend (recebe TransacaoResponseDTO)
-    ↓
-Atualiza lista e aviso de sucesso
-```
-
-### Obter Relatório de Totais
-
-```
-Frontend (RelatorioTotais - mounted)
-    ↓ GET /api/transacoes/totais/resumo
-Backend (TransacoesController)
-    ↓ Chama
-TransacaoService.ObterResumoTotaisAsync()
-    ├─ Busca todas as pessoas
-    ├─ Para cada pessoa:
-    │   ├─ Soma receitas
-    │   ├─ Soma despesas
-    │   └─ Calcula saldo
-    └─ Calcula totais gerais
-Frontend (recebe ResumoTotaisDTO)
-    ↓
-Renderiza cards de pessoas e resumo geral
-```
-
----
-
-## 📐 Padrões e Boas Práticas
-
-### 1. Separação de Responsabilidades
-- **Controllers**: Apenas roteamento HTTP
-- **Services**: Lógica de negócio
-- **Models**: Dados
-- **DTOs**: Comunicação entre camadas
-
-### 2. Injeção de Dependências
-```csharp
-// Registrado em Program.cs
-builder.Services.AddScoped<IPessoaService, PessoaService>();
-builder.Services.AddScoped<ITransacaoService, TransacaoService>();
-```
-
-### 3. Validação em Múltiplas Camadas
-- **Frontend**: Validação imediata ao usuário
-- **Serviço**: Validação de regras de negócio
-- **Banco de Dados**: Constraints de integridade
-
-### 4. Tratamento de Erros
-```csharp
-try
-{
-    // Operação
-}
-catch (ArgumentException ex)
-{
-    return BadRequest(new { mensagem = ex.Message });
-}
-```
-
-### 5. Documentação em Código
-- Comentários XML em métodos públicos
-- Explicação de lógicas complexas
-- Blocos de comentários para seções
-
-### 6. TypeScript Strict Mode
 ```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
-  }
-}
+{"descricao":"Mercado","valor":125.90,"tipo":"DESPESA","pessoaId":1}
 ```
 
-### 7. Formatação de Dados
-- Moeda: Locale brasileiro (R$)
-- Datas: Formato DD/MM/YYYY
-- Valores monetários: 2 casas decimais
+Use o ID realmente retornado na criação de pessoa. Nome: 1–100 caracteres; idade: 0–120. Descrição: 1–200. Valores seguem os mesmos limites monetários do PJ. Pessoa deve existir; menores de 18 anos não podem registrar receitas (regra interna do aplicativo, não regra legal). A exclusão de pessoa é em cascata.
 
-### 8. Async/Await
-```csharp
-public async Task<List<Pessoa>> ListarPessoasAsync()
-{
-    return await _context.Pessoas.ToListAsync();
-}
-```
+A listagem retorna array JSON, com paginação 1–100000 e limite 1–100 (padrão 50), ordenado por data de criação e ID decrescentes. Datas de filtro e totais mensais referem-se à data de criação, não à competência PJ. Ano do resumo mensal: 2000–2200; mês: 1–12.
 
----
+Não há rotas GET por ID ou edição residencial, nem edição integral de lançamento PJ. O cliente Swift usa somente GET.
 
-## 🧪 Casos de Teste Importantes
+## Persistência e atualização
 
-### Menor de Idade Tentando Registrar Receita
-- ✅ **Esperado**: Erro 400 com mensagem clara
-- ✅ **Implementado**: Validação em `TransacaoService`
+Os contextos residenciais e PJ utilizam arquivos SQLite independentes por padrão. As migrações versionadas em Data/Migrations e PJ/Migrations são aplicadas pelo startup com Database.Migrate(). As migrações iniciais registram o esquema legado, e há teste de regressão de atualização.
 
-### Deletar Pessoa com Transações
-- ✅ **Esperado**: Pessoa deletada + todas suas transações deletadas
-- ✅ **Implementado**: Cascata no DbContext
+Antes de atualizar:
+1. Pare a aplicação.
+2. Copie os dois bancos e quaisquer arquivos auxiliares SQLite associados para local protegido.
+3. Inicie a versão nova e confira totais, registros e exportações.
+4. Se a migração falhar, preserve os arquivos, consulte os logs e valide a recuperação a partir da cópia. Não apague bancos para tentar corrigir erros.
 
-### Criar Pessoa com Dados Inválidos
-- ✅ **Esperado**: Validação de nome e idade
-- ✅ **Implementado**: No serviço e no controller
+Não há migração automática entre módulos, backup automatizado ou isolamento de dados por empresa.
 
-### Criar Transação com Pessoa Inexistente
-- ✅ **Esperado**: Erro 400
-- ✅ **Implementado**: Verifica existência primeiro
+## Validação e manutenção
 
----
+Veja o [guia de validação](docs/GUIA_DE_VALIDACAO.md) para testes e cenários manuais. O CI compila .NET, audita NuGet, verifica migração SQLite e faz smoke tests de validação, autenticação e permissões, além dos testes do gerador Python. Há workflow separado para Swift.
 
-## 🔐 Segurança
+## Limites atuais
 
-### Validações Implementadas
-1. ✅ Validação de entrada em todos os endpoints
-2. ✅ Mensagens de erro sem expor detalhes internos
-3. ✅ CORS configurado para aceitar requests locais
-4. ✅ Tipos TypeScript para segurança em tempo de compilação
-
-### Recomendações para Produção
-1. Adicionar autenticação (JWT, OAuth)
-2. Usar HTTPS
-3. Validar e sanitizar entrada HTML
-4. Implementar rate limiting
-5. Adicionar logs de auditoria
-6. Usar variáveis de ambiente para configurações
-
----
-
-## 📝 Notas de Desenvolvimento
-
-### Banco de Dados
-- SQLite: arquivo local sem configuração externa
-- Migrations: Use `dotnet ef database update` se adicionar migrations
-- Seed: Dados iniciais podem ser adicionados em `Program.cs`
-
-### Frontend
-- Hot Reload: Vite recarrega automaticamente em desenvolvimento
-- TypeScript: Compilado em tempo de build
-- Axios: Lib HTTP com interceptores para tratamento de erros
-
-### Execução Simultânea
-```bash
-# Terminal 1
-cd ControladorGastos && dotnet run
-
-# Terminal 2
-cd frontend && npm run dev
-```
-
----
-
-## 📞 Suporte e Melhorias Futuras
-
-### Melhorias Sugeridas
-1. Autenticação de usuários
-2. Backup automático do banco de dados
-3. Exportar dados para CSV/PDF
-4. Categorização de transações
-5. Gráficos e análises
-6. Filtros por data
-7. Busca e paginação
-
-### Troubleshooting
-
-**API não conecta**:
-- Verificar se ASP.NET está rodando em localhost:5000
-- Verificar CORS em Program.cs
-
-**Frontend não conecta na API**:
-- Verificar URL em `api.ts`: deve ser http://localhost:5000
-- Verificar se backend está rodando
-
-**Banco de dados corrompido**:
-- Deletar arquivo `controlador-gastos.db`
-- Reiniciar a aplicação (recriará o banco)
-
----
-
-## 📄 Licença
-
-Este projeto foi desenvolvido como teste técnico.
-
----
-
-**Desenvolvido com ❤️ usando .NET e React**
+Protótipo local. Antes de produção: identidade individual, autorização por empresa/recurso, HTTPS, trilha de auditoria, backup e recuperação, testes de integração, política de retenção e revisão de segurança. Não há emissão de nota fiscal, cálculo tributário, integração bancária, nem cadastro empresarial completo. O relatório é gerencial e não substitui contabilidade formal.

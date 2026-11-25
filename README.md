@@ -1,189 +1,151 @@
 # Auxiliar PJ
 
-**Sistema local de apoio à gestão financeira para profissionais PJ, freelancers e pequenas empresas.**
+Sistema local de gestão financeira para profissionais PJ, freelancers e pequenas empresas, com um módulo legado de controle residencial.
 
-Este repositório passa a reunir o módulo de receitas/despesas do `controle-gastos-residenciais` e o
-gerador de relatórios do [`relatorio-altomatizado-de-contas-`](https://github.com/juniordev830/relatorio-altomatizado-de-contas-).
-Os dois códigos foram integrados, mas o segundo repositório foi preservado sem arquivamento ou exclusão.
+[![CI](https://github.com/juniordev830/auxiliar-NF-pj/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/juniordev830/auxiliar-NF-pj/actions/workflows/ci.yml)
 
-> **Status:** primeira versão de desenvolvimento, não pronta para produção.
-> Não disponibilize na internet nem use dados financeiros sensíveis sem autenticação,
-> autorização, backup e migrações de banco.
+> **Status:** protótipo em desenvolvimento, restrito ao computador local. Use dados fictícios. Não emite notas fiscais (NFS-e/NF-e), não calcula tributos e não está pronto para produção.
 
-## Executar o Auxiliar PJ
+## Funcionalidades
 
-Requisito: **.NET SDK 8**. Na raiz do repositório:
+| Módulo | Recursos atuais |
+| --- | --- |
+| Financeiro PJ | Receitas e despesas, categoria, cliente/fornecedor por lançamento, competência, vencimento e pagamento |
+| Painel web | Resumo mensal, saldo previsto e realizado, filtro por status, paginação, registro e reabertura de pagamento, exportação CSV |
+| Residencial | API para cadastro e exclusão de pessoas, transações, filtros e totais gerais e mensais |
+| Relatórios | Conversão de CSV ou XLSX em HTML com indicadores e gráficos |
+| Cliente Swift | Terminal experimental somente leitura para a API residencial |
+
+O painel PJ não permite editar todos os campos nem excluir lançamentos pela interface; a exclusão PJ está disponível na API. O módulo residencial não possui interface web própria.
+
+## Tecnologias e arquitetura
+
+- C# / .NET 8, ASP.NET Core Minimal APIs e Entity Framework Core 8.
+- SQLite: bancos separados para PJ e residencial.
+- HTML, CSS e JavaScript nativos, servidos pela própria API; não é necessário Node.js, React ou Vite.
+- Python, Pandas, openpyxl, Matplotlib e pytest para relatórios.
+- Swift 5.9+ para o cliente de terminal opcional.
+- GitHub Actions para compilação, auditoria de dependências e testes.
+
+```mermaid
+flowchart TD
+    A[Painel HTML] --> B[ASP.NET Core]
+    C[Cliente Swift residencial] --> B
+    B --> D[API PJ]
+    B --> E[API residencial]
+    D --> F[(auxiliar-pj.db)]
+    E --> G[(controlador-gastos.db)]
+    D --> H[Exportação CSV]
+    H --> I[Python: relatório HTML]
+```
+
+## Executar localmente
+
+Pré-requisitos: Git e SDK .NET 8. Python e Swift são necessários somente para seus módulos opcionais.
 
 ```bash
+git clone https://github.com/juniordev830/auxiliar-NF-pj.git
+cd auxiliar-NF-pj
 dotnet restore ControladorGastos/ControladorGastos.csproj
+```
+
+### Windows (PowerShell 5.1 ou superior)
+
+```powershell
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$env:GASTOS_READ_TOKEN = [Convert]::ToBase64String($bytes)
+$rng.GetBytes($bytes)
+$env:GASTOS_ADMIN_TOKEN = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
+dotnet run --project ControladorGastos/ControladorGastos.csproj
+```
+
+### Linux/macOS (shell com OpenSSL)
+
+```bash
 export GASTOS_READ_TOKEN="$(openssl rand -hex 32)"
 export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
-Abra **http://127.0.0.1:5000**. O painel PJ é uma página HTML responsiva servida pela
-API ASP.NET Core; não exige instalar Node ou iniciar frontend separado. Para usar o painel, cole o token de administração no campo de acesso; o token fica somente na memória do navegador.
+Abra [http://127.0.0.1:5000/](http://127.0.0.1:5000/) e informe o token de administração para cadastrar lançamentos. Para consultar o token local, antes de iniciar o servidor use `$env:GASTOS_ADMIN_TOKEN` no PowerShell ou `printf '%s\n' "$GASTOS_ADMIN_TOKEN"` no shell, em terminal privado. Não compartilhe o valor. Mantenha o servidor em execução.
 
-O módulo legado continua com seu banco `controlador-gastos.db`; os lançamentos PJ ficam em
-`auxiliar-pj.db`, mantendo os dados residenciais separados. Não há migração automática
-dos lançamentos do módulo residencial para o PJ.
+O endpoint [de saúde](http://127.0.0.1:5000/api/health) retorna `{"status":"ok"}` sem autenticação. Para diagnóstico no Windows, execute `scripts\diagnosticar-conexao.cmd` a partir da raiz em outro terminal.
 
-### Atualização dos bancos locais
+## API
 
-A aplicação aplica as migrações do EF Core ao iniciar. A primeira migração de cada banco registra o esquema da versão anterior e mantém os dados criados por ela. Antes de atualizar uma instalação existente, feche a aplicação e faça uma cópia de segurança dos dois arquivos SQLite. Depois da atualização, confira o resumo mensal e gere novamente o CSV.
+Todas as rotas abaixo, exceto saúde, exigem o cabeçalho `Authorization: Bearer <token>`. O token leitor permite GET/HEAD; o administrador permite operações de escrita.
 
-## Funcionalidades implementadas
-
-- Lançamentos de **receitas e despesas** com categoria, contraparte, competência, vencimento e valor;
-- Pagamentos marcados como recebidos/pagos, pendentes ou atrasados;
-- Painel mensal com saldos previsto e realizado (por competência);
-- Listagem paginada, filtros por período e situação;
-- Exportação CSV para o relatório HTML Python com indicadores e gráficos.
-
-### API PJ
-
-| Método | Endereço | Finalidade |
+| Método | Rota | Descrição |
 | --- | --- | --- |
-| GET | `/api/pj/resumo?ano=2026&mes=11` | Indicadores do período |
-| GET | `/api/pj/lancamentos?ano=2026&mes=11&page=1&limit=10` | Lançamentos |
-| POST | `/api/pj/lancamentos` | Criar lançamento |
-| PUT | `/api/pj/lancamentos/{id}/pagamento` | Registrar ou reabrir pagamento |
-| DELETE | `/api/pj/lancamentos/{id}` | Excluir lançamento |
-| GET | `/api/pj/exportar.csv?ano=2026&mes=11` | Baixar CSV |
+| GET | /api/health | Disponibilidade |
+| GET | /api/pj/resumo | Resumo por competência |
+| GET | /api/pj/lancamentos | Listagem paginada e filtros |
+| POST | /api/pj/lancamentos | Criar lançamento |
+| PUT | /api/pj/lancamentos/{id}/pagamento | Registrar/reabrir pagamento |
+| DELETE | /api/pj/lancamentos/{id} | Excluir lançamento |
+| GET | /api/pj/exportar.csv | Exportar lançamentos |
+| GET | /api/pessoas | Listar pessoas |
+| POST | /api/pessoas | Cadastrar pessoa |
+| DELETE | /api/pessoas/{id} | Excluir pessoa e transações |
+| GET | /api/transacoes | Listar transações residenciais |
+| POST | /api/transacoes | Criar transação residencial |
+| GET | /api/transacoes/totais/mensal | Totais por mês |
+| GET | /api/transacoes/totais/resumo | Totais gerais e por pessoa |
 
-Exemplo de lançamento:
+Consulte os parâmetros, regras e exemplos na [documentação técnica](DOCUMENTACAO.md).
 
-```bash
-curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -X POST http://127.0.0.1:5000/api/pj/lancamentos \
-  -H "Content-Type: application/json" \
-  -d '{"descricao":"Projeto web","tipo":"RECEITA","categoria":"Serviços","valor":1500.00,"competencia":"2026-11-12T00:00:00","vencimento":"2026-11-20T00:00:00","dataPagamento":null,"contraparte":"Cliente exemplo"}'
-```
+## Dados e segurança
 
-O resumo considera a **competência**, não a data do movimento bancário. O saldo realizado
-soma somente os lançamentos da competência marcada que já têm data de pagamento.
-O status atrasado usa o dia UTC do servidor. Não há cálculo automático de impostos, emissão
-de notas ou declarações fiscais nesta fase.
+A aplicação exige dois tokens diferentes, cada um com pelo menos 32 bytes UTF-8, e escuta exclusivamente em 127.0.0.1:5000. Requisições sem token válido retornam 401; um leitor tentando escrever recebe 403. O painel guarda o token apenas em memória.
 
-## Relatórios migrados do projeto nº 2
+Os bancos `controlador-gastos.db` e `auxiliar-pj.db` são independentes; não há transferência automática de dados residenciais para PJ. As migrações do EF Core são aplicadas na inicialização. Antes de atualizar, pare o servidor e faça backup dos dois bancos (e de eventuais arquivos auxiliares SQLite); confira os dados após reiniciar. Não exclua o banco para resolver falhas.
+
+O resumo PJ usa competência, não a data do movimento bancário. O saldo realizado considera os lançamentos da competência com data de pagamento preenchida; o atraso usa a data UTC do servidor.
+
+## Relatórios e testes
+
+Na raiz, com Python instalado:
 
 ```bash
 python -m pip install -r relatorios/requirements.txt
 python relatorios/gerar_relatorio.py relatorios/exemplo-pj.csv --saida relatorio-pj.html
 python -m pytest relatorios/tests -q
+dotnet build ControladorGastos/ControladorGastos.csproj
 ```
 
-Abra `relatorio-pj.html` no navegador. Para usar seus lançamentos, exporte CSV
-pelo botão do painel e informe o arquivo no lugar de `relatorios/exemplo-pj.csv`.
-Mais detalhes em [relatorios/README.md](relatorios/README.md).
+Abra o HTML gerado no navegador. Para usar lançamentos fictícios do painel, exporte CSV e informe o caminho desse arquivo ao script. Não versione relatórios ou CSV com dados pessoais.
 
-## Antes de considerar uso profissional
+Consulte [relatórios](relatorios/README.md), [cliente Swift](swift-client/README.md) e [validação técnica](docs/GUIA_DE_VALIDACAO.md). O CI cobre build, auditoria NuGet, migração de bancos legados, verificações básicas da API e testes Python; testes de integração mais amplos ainda são necessários.
 
-São necessários autenticação e perfis de empresa, controle de acesso, migrações
-versionadas, backup/recuperação, testes de integração e revisão de segurança.
-Funções contábeis/fiscais exigem validação de profissional habilitado.
+## Estrutura
 
----
-
-## Módulo original: Controle de Gastos Residenciais
-
-API inicial executável para registrar pessoas da residência, receitas e despesas, com persistência local em SQLite.
-
-## Estado real do projeto
-
-O módulo residencial oferece uma API ASP.NET Core (.NET 8) protegida por tokens. O painel HTML servido em `/` pertence ao módulo Auxiliar PJ; ele não substitui uma interface própria para a gestão residencial.
-
-## Requisitos
-
-- .NET SDK 8
-
-## Executar
-
-Na raiz do repositório:
-
-```bash
-dotnet restore ControladorGastos/ControladorGastos.csproj
-dotnet run --project ControladorGastos/ControladorGastos.csproj
+```text
+ControladorGastos/
+  Program.cs                  # API residencial, autenticação, startup
+  Data/                       # Contexto residencial e migrações
+  Models/                     # Pessoas e transações
+  PJ/                         # Contexto, entidades, endpoints e migrações PJ
+  wwwroot/index.html           # Painel web PJ
+relatorios/                   # Gerador Python, exemplo e testes
+swift-client/                 # Cliente CLI e testes Swift
+tests/                        # Regressão de atualização SQLite
+scripts/                      # Diagnóstico Windows
+docs/                         # Guia de validação
+.github/workflows/            # CI
 ```
 
-A API informa as rotas em `http://localhost:5000` ou na URL local exibida pelo ASP.NET Core. O banco `controlador-gastos.db` é criado localmente no primeiro início. O protótipo usa `EnsureCreated`; antes de produção, crie migrations versionadas e configure backup e proteção dos dados financeiros.
+## Documentação
 
-## Endpoints
+- [Guia rápido](GUIA_RAPIDO.md)
+- [Documentação técnica](DOCUMENTACAO.md)
+- [Configuração do VS Code](VSCODE_SETUP.md)
+- [Validação e manutenção](docs/GUIA_DE_VALIDACAO.md)
 
-- `GET /api/health` — verificação de disponibilidade.
-- `GET /api/pessoas` — lista pessoas.
-- `POST /api/pessoas` — cria pessoa com `nome` e `idade` (0–120).
-- `DELETE /api/pessoas/{id}` — remove pessoa e suas transações.
-- `GET /api/transacoes?page=1&limit=50` — lista transações com o nome da pessoa, com paginação (página 1 a 100.000, limite 1 a 100, 50 por padrão). Retorna array JSON como antes, mas com limite de itens; entradas inválidas retornam HTTP 400.
-- `POST /api/transacoes` — cria transação com `descricao`, `valor`, `tipo` (`RECEITA` ou `DESPESA`) e `pessoaId`.
-- `GET /api/transacoes/totais/resumo` — totais gerais e por pessoa.
+## Próximos passos
 
-Exemplo para criar pessoa:
+Autenticação individual, autorização por empresa e recurso, backup/recuperação, auditoria, testes de integração e revisão de segurança antes de uso profissional. Cadastro de CNPJ, emissão fiscal, impostos e integração bancária são possibilidades futuras, não funcionalidades existentes. Funções fiscais exigem validação contábil.
 
-```bash
-curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -X POST http://localhost:5000/api/pessoas \\
-  -H 'Content-Type: application/json' \\
-  -d '{"nome":"Ana","idade":30}'
-```
-
-Exemplo para criar despesa:
-
-```bash
-curl -H "Authorization: Bearer $GASTOS_ADMIN_TOKEN" -X POST http://localhost:5000/api/transacoes \\
-  -H 'Content-Type: application/json' \\
-  -d '{"descricao":"Mercado","valor":125.90,"tipo":"DESPESA","pessoaId":1}'
-```
-
-## Regras e limitações
-
-- Nome e descrição são validados no servidor.
-- O valor deve ser positivo; valores monetários são representados como decimal.
-- Menores de 18 anos não podem registrar receitas.
-- A remoção de uma pessoa remove suas transações relacionadas.
-- O módulo residencial ainda não possui frontend próprio nem login individual; o módulo PJ possui um painel HTML local. Tokens de leitura/administração são obrigatórios, inclusive no acesso local. Não exponha a API na internet nem a use com dados financeiros reais até implementar autenticação individual, autorização e demais controles.
-
-## Proteção obrigatória por tokens (acesso local)
-
-A aplicação não inicia sem **os dois** segredos configurados. Todas as rotas `/api/*`, exceto `/api/health`, exigem autenticação:
-
-```bash
-# Gere valores aleatórios diferentes; não copie tokens de exemplos ou do CI.
-export GASTOS_READ_TOKEN="$(openssl rand -hex 32)"
-export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
-dotnet run --project ControladorGastos/ControladorGastos.csproj
-```
-
-Ambos precisam ter pelo menos 32 bytes e ser diferentes. Depois de iniciar:
-
-- O token de leitura permite `GET` e `HEAD` nas rotas `/api/*`.
-- O token de administração permite leitura, criação e exclusão.
-- Requisições sem token válido retornam **401**; um token de leitura tentando escrever retorna **403**.
-- Envie o token em `Authorization: Bearer <seu-token>`. Exemplo: `curl -H "Authorization: Bearer $GASTOS_READ_TOKEN" http://127.0.0.1:5000/api/pessoas`.
-- Não publique, registre em logs, versione ou exponha os segredos em JavaScript do navegador.
-
-Sem essas duas variáveis, a aplicação encerra a inicialização, sem expor dados financeiros. Essa é uma medida inicial para um operador local, **não** um sistema completo de identidade e autorização por usuário. Não exponha a aplicação na internet antes de implementar contas de usuários, autorização por recurso, autenticação segura, HTTPS e migrações versionadas.
-
-## Diagnóstico de conexão no Windows
-
-Na raiz do repositório, execute `scripts/diagnosticar-conexao.cmd` em CMD ou PowerShell. O script verifica se o SDK .NET está no PATH, consulta `/api/health` e confirma se o painel local está sendo servido. Ele não altera a política de execução do PowerShell nem imprime tokens.
-
-## Testes e CI
-
-O GitHub Actions restaura, compila, audita dependências NuGet e realiza testes smoke da validação de API, paginação de transações, regra de menores, exclusão em cascata e acessos anônimo, leitor e administrador. Testes de integração mais completos ainda são necessários antes de considerar a API pronta para produção.
-
-## Cliente de terminal em Swift (nova linguagem)
-
-O projeto também inclui um cliente **Swift** experimental em [`swift-client/`](swift-client/README.md). Ele lê disponibilidade, pessoas e resumo financeiro da API **local** (sem modificar registros):
-
-```bash
-cd swift-client
-swift run gastos-cli health
-swift run gastos-cli pessoas
-swift run gastos-cli resumo
-swift test
-```
-
-É necessário manter a API .NET em execução na mesma máquina. Para instâncias locais com autenticação por token, use `GASTOS_READ_TOKEN` como variável de ambiente. Veja o README do cliente para requisitos e limitações. Não é um aplicativo iOS.
-
-## Validação e manutenção
-
-Para revisar alterações neste projeto, consulte o [guia técnico de validação](docs/GUIA_DE_VALIDACAO.md), com comandos, cenários de regressão e próximos incrementos.
+O módulo de relatórios foi incorporado de [relatorio-altomatizado-de-contas-](https://github.com/juniordev830/relatorio-altomatizado-de-contas-), preservando o repositório original.
