@@ -50,3 +50,14 @@ def test_parse_sheet_selector():
 
     assert gerar_relatorio.parse_aba("2") == 2
     assert gerar_relatorio.parse_aba("Vendas") == "Vendas"
+
+
+def test_chart_labels_and_image_attributes_are_escaped():
+    frame = pd.DataFrame({"Categoria": ["A"], "Valor": [10.0]})
+    title = '<img src=x onerror="bad()">'
+    image = 'abc" onerror="bad()'
+    html = montar_html(frame, {title: image})
+    assert title not in html
+    assert 'src="data:image/png;base64,abc" onerror=' not in html
+    assert '&lt;img src=x onerror=&quot;bad()&quot;&gt;' in html
+    assert 'abc&quot; onerror=&quot;bad()' in html
