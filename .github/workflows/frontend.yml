@@ -3,12 +3,12 @@ on:
   push:
     paths:
       - 'ControladorGastos/wwwroot/**'
-      - 'tests/frontend.test.cjs'
+      - 'tests/*frontend*.test.cjs'
       - '.github/workflows/frontend.yml'
   pull_request:
     paths:
       - 'ControladorGastos/wwwroot/**'
-      - 'tests/frontend.test.cjs'
+      - 'tests/*frontend*.test.cjs'
       - '.github/workflows/frontend.yml'
 permissions:
   contents: read
@@ -18,4 +18,5 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - run: node --check ControladorGastos/wwwroot/js/app.js
-      - run: node --test tests/frontend.test.cjs
+      - run: node --check ControladorGastos/wwwroot/js/financeiro.js
+      - run: node --test tests/frontend.test.cjs tests/financeiro-frontend.test.cjs
