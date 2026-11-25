@@ -7,13 +7,15 @@ Cliente **somente leitura** feito em Swift para a API ASP.NET Core local deste r
 - Swift 5.9 ou superior.
 - API .NET executando na **mesma máquina**, em `http://127.0.0.1:5000`.
 
-Na raiz do repositório, abra um terminal e execute:
+Na raiz do repositório, abra um terminal e configure os dois tokens obrigatórios antes de iniciar o servidor (consulte o [README principal](../README.md)):
 
 ```bash
+export GASTOS_READ_TOKEN="$(openssl rand -hex 32)"
+export GASTOS_ADMIN_TOKEN="$(openssl rand -hex 32)"
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
-Em outro terminal:
+Em outro terminal, defina o mesmo token de leitura do servidor (sem compartilhá-lo) antes dos comandos protegidos:
 
 ```bash
 cd swift-client
@@ -28,14 +30,16 @@ swift run gastos-cli csv 1 100 DESPESA > despesas.csv
 swift test
 ```
 
-Para API com tokens ativados, exporte o token **somente de leitura** para o processo local:
+Para acessar as rotas protegidas, exporte o token **somente de leitura** para o processo local. O token é obrigatório, exceto para health:
 
 ```bash
 export GASTOS_READ_TOKEN="seu-token-local-configurado-no-backend"
 swift run gastos-cli pessoas
 ```
 
-Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000 e **não segue redirecionamentos HTTP**, para evitar encaminhamento acidental do token a serviços externos. As operações são GET e não modificam o banco. ### Exportar CSV
+Evite salvar o token em arquivos versionados e logs. O cliente aceita apenas URL HTTP de loopback `localhost` ou `127.0.0.1` na porta 5000 e **não segue redirecionamentos HTTP**, para evitar encaminhamento acidental do token a serviços externos. As operações são GET e não modificam o banco.
+
+### Exportar CSV
 
 O comando `csv` exporta **uma página de transações por vez**. Por segurança, o resultado vai somente para a saída padrão, e pode ser redirecionado a um arquivo local:
 
