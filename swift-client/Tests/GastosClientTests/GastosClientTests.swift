@@ -42,6 +42,22 @@ final class GastosClientTests: XCTestCase {
         XCTAssertThrowsError(try GastosClient.monthlyQuery(year: 2026, month: 13))
     }
 
+    func testDecodesCashFlowWithoutLosingCents() throws {
+        let json = #"{"ano":2026,"mes":9,"receitas":0.30,"despesas":0.01,"saldo":0.29,"quantidade":3,"dias":[{"data":"2026-09-02","receitas":0.30,"despesas":0,"saldo":0.30,"quantidade":2},{"data":"2026-09-03","receitas":0,"despesas":0.01,"saldo":-0.01,"quantidade":1}]}"#
+        let cash = try JSONDecoder().decode(FluxoCaixa.self, from: Data(json.utf8))
+        XCTAssertEqual(cash.saldo, Decimal(string: "0.29"))
+        XCTAssertEqual(cash.dias.count, 2)
+        XCTAssertEqual(cash.dias.last?.saldo, Decimal(string: "-0.01"))
+        XCTAssertEqual(cash.dias.first?.quantidade, 2)
+    }
+
+    func testDecodesEmptyCashFlow() throws {
+        let json = #"{"ano":2026,"mes":7,"receitas":0,"despesas":0,"saldo":0,"quantidade":0,"dias":[]}"#
+        let cash = try JSONDecoder().decode(FluxoCaixa.self, from: Data(json.utf8))
+        XCTAssertTrue(cash.dias.isEmpty)
+        XCTAssertEqual(cash.saldo, 0)
+    }
+
     func testDecodesMonthlyFinancialReport() throws {
         let json = #"""
         {
