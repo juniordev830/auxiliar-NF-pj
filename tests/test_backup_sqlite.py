@@ -6,7 +6,7 @@ from contextlib import closing
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from backup_sqlite import backup, restore, NAMES
+from backup_sqlite import backup, restore, verify, NAMES
 
 class BackupTest(unittest.TestCase):
     def test_backup_restore_and_no_overwrite(self):
@@ -20,6 +20,14 @@ class BackupTest(unittest.TestCase):
                     db.execute("CREATE TABLE sample (value INTEGER)")
                     db.execute("INSERT INTO sample VALUES (?)", (i,))
             saved = backup(*dbs, root / "saved")
+            before = {p.name: p.read_bytes() for p in saved.iterdir()}
+            self.assertEqual(verify(saved), saved)
+            self.assertEqual({p.name: p.read_bytes() for p in saved.iterdir()}, before)
+            sidecar = Path(str(saved / NAMES[0]) + "-wal")
+            sidecar.write_bytes(b"unexpected")
+            with self.assertRaisesRegex(ValueError, "arquivo auxiliar"):
+                verify(saved)
+            sidecar.unlink()
             recovered = restore(saved, root / "recovered")
             for i, name in enumerate(NAMES):
                 with closing(sqlite3.connect(recovered / name)) as db:
@@ -44,6 +52,8 @@ class BackupTest(unittest.TestCase):
             # Modify a valid SQLite database: integrity passes but checksum fails.
             with closing(sqlite3.connect(saved / NAMES[0])) as db, db:
                 db.execute("UPDATE sample SET value=999")
+            with self.assertRaisesRegex(ValueError, "Checksum inválido"):
+                verify(saved)
             with self.assertRaises(ValueError):
                 restore(saved, root / "tampered")
             self.assertFalse((root / "tampered").exists())
