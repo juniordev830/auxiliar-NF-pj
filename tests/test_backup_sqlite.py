@@ -1,4 +1,5 @@
 import sqlite3
+import json
 import tempfile
 import unittest
 from contextlib import closing
@@ -14,6 +15,8 @@ class BackupTest(unittest.TestCase):
             dbs = [root / name for name in NAMES]
             for i, path in enumerate(dbs):
                 with closing(sqlite3.connect(path)) as db, db:
+                    for table in (("Pessoas", "Transacoes") if i == 0 else ("Lancamentos",)):
+                        db.execute(f"CREATE TABLE {table} (id INTEGER PRIMARY KEY)")
                     db.execute("CREATE TABLE sample (value INTEGER)")
                     db.execute("INSERT INTO sample VALUES (?)", (i,))
             saved = backup(*dbs, root / "saved")
@@ -27,6 +30,17 @@ class BackupTest(unittest.TestCase):
                 backup(*dbs, saved)
             with self.assertRaises(ValueError):
                 backup(dbs[0], dbs[0], root / "same")
+            with self.assertRaisesRegex(ValueError, "Esquema incompatível"):
+                backup(dbs[1], dbs[0], root / "swapped")
+            self.assertFalse((root / "swapped").exists())
+            manifest = saved / "manifest.json"
+            original = manifest.read_text(encoding="utf-8")
+            for invalid in ([], {"version": 1, "files": None}, {"version": 1, "files": {name: 12 for name in NAMES}}):
+                manifest.write_text(json.dumps(invalid), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    restore(saved, root / "invalid")
+                self.assertFalse((root / "invalid").exists())
+            manifest.write_text(original, encoding="utf-8")
             # Modify a valid SQLite database: integrity passes but checksum fails.
             with closing(sqlite3.connect(saved / NAMES[0])) as db, db:
                 db.execute("UPDATE sample SET value=999")
