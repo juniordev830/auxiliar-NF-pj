@@ -18,3 +18,7 @@ Para usar bancos recuperados: mantenha a API parada, preserve os arquivos origin
 Guarde backups fora do Git, em armazenamento protegido e preferencialmente criptografado. SHA-256 detecta corrupção acidental, não autentica um manifesto alterado por terceiro. O script não criptografa dados, não agenda backups e não controla se a aplicação está em execução. No Windows configure permissões do diretório pelo sistema. Faça testes periódicos de recuperação.
 
 O utilitário também valida a estrutura mínima dos bancos (Pessoas/Transacoes no residencial, Lancamentos no PJ), a integridade referencial e o formato do manifesto. Isso detecta arquivos trocados ou manifestos inválidos, mas não garante compatibilidade de todas as colunas ou migrações.
+
+## Verificação sem recuperação
+
+Execute `python scripts/backup_sqlite.py verify --origem backups/antes-da-atualizacao`. O comando não cria um banco recuperado nem substitui arquivos. Verifica manifesto, hashes, esquema mínimo e integridade SQLite e rejeita arquivos auxiliares de banco ativo. Use em backups fechados, não em diretórios de bancos em uso. Uma verificação bem-sucedida não substitui testes periódicos de restauração nem autentica um manifesto adulterado.
