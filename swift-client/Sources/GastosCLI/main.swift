@@ -9,6 +9,7 @@ struct GastosCLI {
       swift run gastos-cli pessoas
       swift run gastos-cli resumo
       swift run gastos-cli mensal <ano> <mes>
+      swift run gastos-cli fluxo <ano> <mes>
       swift run gastos-cli transacoes [pagina] [limite] [RECEITA|DESPESA]
       swift run gastos-cli csv [pagina] [limite] [RECEITA|DESPESA]
 
@@ -17,7 +18,7 @@ struct GastosCLI {
 
     static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        guard let command = arguments.first, ["health", "pessoas", "resumo", "mensal", "transacoes", "csv"].contains(command) else {
+        guard let command = arguments.first, ["health", "pessoas", "resumo", "mensal", "fluxo", "transacoes", "csv"].contains(command) else {
             print(usage)
             return
         }
@@ -54,6 +55,20 @@ struct GastosCLI {
                 print("Saldo: \(monthly.saldoGeral)")
                 for person in monthly.porPessoa {
                     print("#\(person.pessoaId) \(person.pessoaNome): \(person.saldo)")
+                }
+            case "fluxo":
+                guard arguments.count == 3,
+                      let year = Int(arguments[1]), let month = Int(arguments[2]) else {
+                    fputs("Informe ano e mês numéricos.\n", stderr)
+                    exit(2)
+                }
+                let cash = try await client.fluxoCaixa(year: year, month: month)
+                print("Fluxo realizado: \(cash.mes)/\(cash.ano)")
+                print("Receitas: \(cash.receitas)")
+                print("Despesas: \(cash.despesas)")
+                print("Saldo: \(cash.saldo)")
+                for day in cash.dias {
+                    print("\(day.data): \(day.saldo) (\(day.quantidade) lançamento(s))")
                 }
             case "transacoes", "csv":
                 guard arguments.count <= 4,

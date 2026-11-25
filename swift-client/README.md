@@ -59,3 +59,7 @@ O relatório mensal apresenta receitas, despesas, saldo, quantidade de registros
 - `Tests/GastosClientTests`: testes de validade de URL, filtros, paginação e decodificação das respostas.
 
 O CI valida compilação e testes do pacote Swift. O cliente ainda **não** tem teste de integração real contra servidor ASP.NET nem deve ser usado em produção com dados financeiros.
+
+## Fluxo de caixa PJ
+
+Com a API atualizada, `swift run gastos-cli fluxo 2026 9` consulta receitas e despesas realizadas pela data de pagamento, com totais por dia. Usa o token leitor e não altera registros. Consulte [o contrato do endpoint](../docs/FLUXO_CAIXA.md).
