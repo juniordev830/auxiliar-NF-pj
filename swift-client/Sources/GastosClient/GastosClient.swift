@@ -51,6 +51,24 @@ public struct ResumoMensal: Decodable {
     public let porPessoa: [ResumoPessoa]
 }
 
+public struct FluxoDia: Decodable {
+    public let data: String
+    public let receitas: Decimal
+    public let despesas: Decimal
+    public let saldo: Decimal
+    public let quantidade: Int
+}
+
+public struct FluxoCaixa: Decodable {
+    public let ano: Int
+    public let mes: Int
+    public let receitas: Decimal
+    public let despesas: Decimal
+    public let saldo: Decimal
+    public let quantidade: Int
+    public let dias: [FluxoDia]
+}
+
 public struct Transacao: Decodable {
     public let id: Int
     public let descricao: String
@@ -133,6 +151,11 @@ public struct GastosClient {
     public func resumoMensal(year: Int, month: Int) async throws -> ResumoMensal {
         let query = try Self.monthlyQuery(year: year, month: month)
         return try await get("api/transacoes/totais/mensal", queryItems: query)
+    }
+
+    public func fluxoCaixa(year: Int, month: Int) async throws -> FluxoCaixa {
+        let query = try Self.monthlyQuery(year: year, month: month)
+        return try await get("api/pj/fluxo-caixa", queryItems: query)
     }
 
     public func transacoes(page: Int = 1, limit: Int = 20, tipo: String? = nil) async throws -> [Transacao] {
