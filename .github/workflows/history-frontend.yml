@@ -1,0 +1,23 @@
+name: History frontend tests
+on:
+  push:
+    paths:
+      - 'ControladorGastos/wwwroot/historico.html'
+      - 'ControladorGastos/wwwroot/js/historico*.js'
+      - 'tests/historico-frontend.test.cjs'
+      - '.github/workflows/history-frontend.yml'
+  pull_request:
+    paths:
+      - 'ControladorGastos/wwwroot/historico.html'
+      - 'ControladorGastos/wwwroot/js/historico*.js'
+      - 'tests/historico-frontend.test.cjs'
+      - '.github/workflows/history-frontend.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: node --check ControladorGastos/wwwroot/js/historico.js
+      - run: node --test tests/historico-frontend.test.cjs
