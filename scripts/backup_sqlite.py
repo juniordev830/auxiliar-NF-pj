@@ -39,10 +39,11 @@ def digest(path):
             sha.update(chunk)
     return sha.hexdigest()
 
-def check(path, expected=None):
+def check(path, expected=None, immutable=False):
     if not path.is_file() or path.is_symlink():
         raise ValueError(f"Arquivo SQLite ausente ou inválido: {path}")
-    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+    uri = path.resolve().as_uri() + "?mode=ro" + ("&immutable=1" if immutable else "")
+    with closing(sqlite3.connect(uri, uri=True)) as db:
         if db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
             raise ValueError(f"Falha de integridade: {path}")
         if expected is not None:
@@ -113,7 +114,7 @@ def verify(source):
             sidecar = Path(str(path) + suffix)
             if sidecar.exists() or sidecar.is_symlink():
                 raise ValueError(f"Backup contém arquivo auxiliar inesperado: {name}{suffix}")
-        check(path, name)
+        check(path, name, immutable=True)
     return source
 
 def restore(source, destination):

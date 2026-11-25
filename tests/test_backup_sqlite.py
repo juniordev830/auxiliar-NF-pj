@@ -20,7 +20,9 @@ class BackupTest(unittest.TestCase):
                     db.execute("CREATE TABLE sample (value INTEGER)")
                     db.execute("INSERT INTO sample VALUES (?)", (i,))
             saved = backup(*dbs, root / "saved")
+            before = {p.name: p.read_bytes() for p in saved.iterdir()}
             self.assertEqual(verify(saved), saved)
+            self.assertEqual({p.name: p.read_bytes() for p in saved.iterdir()}, before)
             sidecar = Path(str(saved / NAMES[0]) + "-wal")
             sidecar.write_bytes(b"unexpected")
             with self.assertRaisesRegex(ValueError, "arquivo auxiliar"):
