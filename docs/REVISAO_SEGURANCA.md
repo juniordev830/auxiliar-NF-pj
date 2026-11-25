@@ -13,7 +13,7 @@
 
 - Tokens compartilhados não identificam pessoas, não expiram no servidor e não são revogados pelo logout; não há isolamento por empresa.
 - Histórico não é imutável contra acesso direto ao banco, não inclui ações anteriores à migração e contém dados financeiros; precisa de retenção e acesso apropriados. Não representa auditoria contábil formal.
-- Concorrência otimista protege alterações simultâneas durante a requisição, mas não impede toda edição baseada em formulário desatualizado. Considerar versionamento HTTP/If-Match.
+- Concorrência otimista protege operações simultâneas. A API aceita a versão do lançamento para detectar formulários desatualizados e o painel a envia; clientes antigos que omitem a versão ainda podem sobrescrever alterações.
 - Backups não são criptografados nem agendados, e o hash não protege contra alguém que altera o manifesto e os dados juntos. Pare a aplicação antes de copiar os dois bancos.
 - Ainda não há teste E2E de navegador, análise dinâmica de segurança, teste de carga, MFA, HTTPS ou identidade individual. Não publicar na internet nem usar dados financeiros reais.
 - A política CSP depende da versão do frontend sem scripts inline. Testar o conjunto integrado, não aplicar isoladamente ao painel legado.

@@ -66,6 +66,12 @@ public static class AuxiliarPjEndpoints
             return Results.Created($"/api/pj/lancamentos/{row.Id}", Apresentar(row));
         });
 
+        pj.MapGet("/lancamentos/{id:int}", async Task<IResult> (int id, AuxiliarPjContext db) =>
+        {
+            var row = await db.Lancamentos.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+            return row is null ? Results.NotFound(new { error = "Lançamento não encontrado." }) : Results.Ok(Apresentar(row));
+        });
+
         pj.MapPut("/lancamentos/{id:int}/pagamento", async Task<IResult> (
             int id, PagamentoPjInput input, AuxiliarPjContext db) =>
         {
@@ -73,6 +79,8 @@ public static class AuxiliarPjEndpoints
                 return Results.BadRequest(new { error = "Data do pagamento inválida." });
             var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
             if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
+            if (input.Versao.HasValue && input.Versao.Value != row.Versao)
+                return Results.Conflict(new { error = "Lançamento desatualizado. Recarregue antes de alterar." });
             var antes = Snapshot(row);
             row.DataPagamento = input.DataPagamento?.Date;
             row.Versao++;
@@ -81,10 +89,12 @@ public static class AuxiliarPjEndpoints
             return Results.Ok(Apresentar(row));
         });
 
-        pj.MapDelete("/lancamentos/{id:int}", async Task<IResult> (int id, AuxiliarPjContext db) =>
+        pj.MapDelete("/lancamentos/{id:int}", async Task<IResult> (int id, int? versao, AuxiliarPjContext db) =>
         {
             var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
             if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
+            if (versao.HasValue && versao.Value != row.Versao)
+                return Results.Conflict(new { error = "Lançamento desatualizado. Recarregue antes de excluir." });
             var antes = Snapshot(row);
             row.ExcluidoEm = DateTime.UtcNow;
             row.Versao++;
@@ -100,6 +110,8 @@ public static class AuxiliarPjEndpoints
             if (erro is not null) return Results.BadRequest(new { error = erro });
             var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
             if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
+            if (input.Versao.HasValue && input.Versao.Value != row.Versao)
+                return Results.Conflict(new { error = "Lançamento desatualizado. Recarregue antes de editar." });
             var antes = Snapshot(row);
             row.Descricao = input.Descricao!.Trim();
             row.Tipo = input.Tipo!.Trim().ToUpperInvariant();
@@ -287,5 +299,5 @@ public static class AuxiliarPjEndpoints
 
 public sealed record LancamentoPjInput(
     string? Descricao, string? Tipo, string? Categoria, decimal Valor,
-    DateTime Competencia, DateTime? Vencimento, DateTime? DataPagamento, string? Contraparte);
-public sealed record PagamentoPjInput(DateTime? DataPagamento);
+    DateTime Competencia, DateTime? Vencimento, DateTime? DataPagamento, string? Contraparte, int? Versao = null);
+public sealed record PagamentoPjInput(DateTime? DataPagamento, int? Versao = null);

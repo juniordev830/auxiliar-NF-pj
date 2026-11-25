@@ -7,11 +7,13 @@
       let page = 1, total = 0, limit = 10;
       let accessToken = ''; // Apenas em memória; nunca salvo em localStorage.
       let editId = null;
+      let editVersion = null;
       let sessionVersion = 0;
       const loads = latestRequest();
       let sessionTimer;
       function resetForm() {
         editId = null;
+        editVersion = null;
         $('form').reset();
         $('competencia').value = localDate();
         $('form-title').textContent = 'Novo lançamento';
@@ -39,6 +41,7 @@
       }
       function beginEdit(item) {
         editId = item.id;
+        editVersion = item.versao;
         $('form-title').textContent = 'Editar lançamento';
         $('cancel-edit').hidden = false;
         for (const id of ['descricao','tipo','categoria','contraparte','valor'])
@@ -94,7 +97,7 @@
           try {
             await request('/api/pj/lancamentos/'+item.id+'/pagamento',{
               method:'PUT',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({dataPagamento:item.status==='PAGO'?null:(localDate()+'T00:00:00')})
+              body:JSON.stringify({dataPagamento:item.status==='PAGO'?null:(localDate()+'T00:00:00'),versao:item.versao})
             });
             await load();
           }catch(e){if(e.name !== 'AbortError') notify(e.message,true);}finally{btn.disabled=false;}
@@ -178,6 +181,7 @@
         const target = editId;
         const version = sessionVersion;
         const body={
+          versao:editVersion,
           descricao:$('descricao').value, tipo:$('tipo').value,
           categoria:$('categoria').value,contraparte:$('contraparte').value,
           valor:Number($('valor').value), competencia:$('competencia').value+'T00:00:00',
