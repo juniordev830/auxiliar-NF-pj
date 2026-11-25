@@ -38,6 +38,23 @@ static bool TokenMatches(string? provided, string expected)
 }
 
 var app = builder.Build();
+app.Use(async (http, next) =>
+{
+    http.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    http.Response.Headers["Referrer-Policy"] = "no-referrer";
+    http.Response.Headers["X-Frame-Options"] = "DENY";
+    http.Response.Headers["Content-Security-Policy"] =
+        "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self'; img-src 'self' data: blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
+    if (http.Request.Path.StartsWithSegments("/api"))
+        http.Response.Headers.CacheControl = "no-store";
+    try { await next(http); }
+    catch (DbUpdateConcurrencyException) when (!http.Response.HasStarted)
+    {
+        http.Response.StatusCode = 409;
+        await http.Response.WriteAsJsonAsync(new { error = "Registro alterado por outra operação. Atualize a página e tente novamente." });
+    }
+});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -137,6 +154,9 @@ app.MapGet("/api/transacoes", async Task<IResult> (
     var normalizedTipo = tipo?.Trim().ToUpperInvariant();
     if (normalizedTipo is not null and not ("RECEITA" or "DESPESA"))
         return Results.BadRequest(new { error = "O filtro tipo deve ser RECEITA ou DESPESA." });
+    if ((de.HasValue && (de.Value.Year < 2000 || de.Value.Year > 2200)) ||
+        (ate.HasValue && (ate.Value.Year < 2000 || ate.Value.Year > 2200)))
+        return Results.BadRequest(new { error = "Datas devem estar entre 2000 e 2200." });
     if (de.HasValue && ate.HasValue && de.Value.Date > ate.Value.Date)
         return Results.BadRequest(new { error = "O período inicial não pode ser posterior ao final." });
 

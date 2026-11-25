@@ -29,7 +29,7 @@ if errorlevel 1 (
     echo FALHA: API local nao responde.
     echo Na raiz do repositorio, execute:
     echo   dotnet restore ControladorGastos/ControladorGastos.csproj
-    echo   dotnet run --project ControladorGastos/ControladorGastos.csproj
+    echo   scripts\iniciar-local.cmd
     echo Mantenha o terminal do servidor aberto e execute este diagnostico novamente.
     exit /b 1
 )

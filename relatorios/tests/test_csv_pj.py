@@ -22,7 +22,7 @@ def test_csv_pj_generates_summary_and_escapes_category(tmp_path):
     assert "Receitas previstas" in html
     assert "Despesas previstas" in html
     assert "Saldo previsto" in html
-    assert "70.00" in html
+    assert "R$ 70,00" in html
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
 

@@ -1,45 +1,49 @@
-# Guia rápido — Auxiliar PJ e Controle de Gastos
+# Guia rápido — Auxiliar PJ
 
-## O que está disponível
-
-- API ASP.NET Core (.NET 8) com tokens obrigatórios para rotas protegidas.
-- Painel HTML local do módulo Auxiliar PJ, servido pela mesma aplicação em `http://127.0.0.1:5000/`.
-- O módulo residencial continua disponível por API; não há um painel residencial independente nesta versão.
-
-## Executar
-
-Na raiz do repositório:
+1. Instale o **SDK .NET 8** e o Git. Não é necessário instalar Node.js.
+2. Clone ou abra este repositório no VS Code.
+3. Na raiz, execute `scripts\iniciar-local.cmd` no Windows, ou use os comandos PowerShell abaixo:
 
 ```powershell
 dotnet restore ControladorGastos/ControladorGastos.csproj
-$env:GASTOS_READ_TOKEN = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-$env:GASTOS_ADMIN_TOKEN = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+$env:GASTOS_READ_TOKEN = [Convert]::ToBase64String($bytes)
+$rng.GetBytes($bytes)
+$env:GASTOS_ADMIN_TOKEN = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
+$env:GASTOS_ADMIN_TOKEN
 dotnet run --project ControladorGastos/ControladorGastos.csproj
 ```
 
-Mantenha o servidor em execução e abra `http://127.0.0.1:5000/`.
+O comando que mostra o token deve ser usado somente em terminal privado. Copie o token administrador e não o compartilhe. Os comandos são compatíveis com Windows PowerShell 5.1. Para Linux/macOS, veja o [README](README.md).
 
-## Diagnóstico no Windows
+4. Abra http://127.0.0.1:5000/ e informe o token no campo de acesso.
+5. Cadastre uma receita e uma despesa **fictícias**, selecione a competência e confira o resumo.
+6. Marque um lançamento como pago ou reabra-o. Exporte o CSV se desejar gerar um relatório.
 
-Em outro terminal, execute:
+O painel é servido pela API. O módulo residencial é acessível por API, não por uma interface própria.
+
+## Diagnóstico
+
+Em outro terminal, na raiz:
 
 ```powershell
 .\scripts\diagnosticar-conexao.cmd
 ```
 
-O arquivo CMD funciona sem executar scripts PowerShell. Ele verifica o SDK .NET, a API em `/api/health` e a página inicial. Se o comando `dotnet` não for encontrado, instale o **SDK .NET 8**, abra um novo terminal e tente novamente.
+Se dotnet não estiver no PATH, instale o SDK .NET 8 e abra outro terminal. Se houver erro 401, confira o token; 403 indica falta de permissão de escrita. Se houver falha de migração, preserve os bancos e consulte a [documentação técnica](DOCUMENTACAO.md).
 
-## Rotas principais
+## Relatórios
 
-- `GET /api/health`
-- `GET /api/pessoas`
-- `POST /api/pessoas`
-- `GET /api/transacoes`
-- `POST /api/transacoes`
-- `GET /api/transacoes/totais/resumo`
+Com Python instalado:
 
-As rotas protegidas exigem `Authorization: Bearer <token>`. Não coloque tokens em HTML, JavaScript, histórico do navegador ou repositórios.
+```powershell
+python -m pip install -r relatorios/requirements.txt
+python relatorios/gerar_relatorio.py relatorios/exemplo-pj.csv --saida relatorio-pj.html
+```
 
-## Segurança
+Abra o HTML gerado no navegador. Consulte o [guia de relatórios](relatorios/README.md) para usar um CSV exportado.
 
-Use somente em ambiente local. O painel PJ não oferece identidade individual por usuário e não deve ser publicado na internet. Não utilize dados financeiros reais antes de implementar autenticação individual, autorização por recurso, HTTPS, backups e migrações versionadas.
+**Atenção:** a aplicação é local, com migrações automáticas na inicialização e tokens obrigatórios. Não publique na internet, não use dados reais nesta fase e faça backup antes de atualizar. O projeto não emite notas fiscais.

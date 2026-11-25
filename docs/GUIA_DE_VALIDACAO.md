@@ -1,24 +1,39 @@
 # Validação técnica — Auxiliar PJ
 
-O repositório passou a concentrar a API original de gastos, o módulo financeiro PJ e o gerador Python de relatórios. A denominação **NF** no nome do repositório não significa que ele emita notas fiscais: **essa função ainda não foi implementada**.
+O projeto inclui API residencial, módulo PJ e gerador Python. Não emite nota fiscal. Use apenas dados fictícios.
 
-## Verificação local
+## Validação local
 
-1. Instalar o SDK .NET 8 e executar `dotnet restore ControladorGastos/ControladorGastos.csproj`.
-2. Iniciar com `dotnet run --project ControladorGastos/ControladorGastos.csproj` e consultar `http://127.0.0.1:5000/api/health`.
-3. Abrir o painel PJ na raiz do servidor. Registrar receita e despesa **fictícias**, verificar resumo por competência e marcar pagamento.
-4. Exportar CSV pelo painel e conferir os campos `Data`, `Categoria`, `Valor`, `Tipo` e `Status`.
-5. Instalar dependências do relatório: `python -m pip install -r relatorios/requirements.txt`.
-6. Rodar `python -m pytest relatorios/tests -q` e gerar HTML com `python relatorios/gerar_relatorio.py relatorios/exemplo-pj.csv --saida relatorio-pj.html`.
+1. Siga o [guia rápido](../GUIA_RAPIDO.md) para instalar .NET 8, restaurar dependências, gerar tokens e iniciar o servidor.
+2. Confirme GET http://127.0.0.1:5000/api/health e abra o painel.
+3. Teste uma receita e uma despesa na mesma competência, inclusive saldo negativo e mês vazio.
+4. Marque pagamento, reabra-o, edite e teste vencimentos e paginação. Verifique a exclusão lógica e o histórico via API.
+5. Exporte CSV e confira os campos Data, Categoria, Valor, Tipo, Descricao, Status, Contraparte, Vencimento e Pagamento.
+6. Verifique acesso anônimo (401), leitura autorizada (200) e tentativa de escrita com leitor (403).
+7. Teste valores inválidos, datas fora do intervalo, categorias vazias e textos com caracteres especiais.
 
-## Casos a testar antes de liberar
+Na raiz, com dependências instaladas:
 
-- Receita e despesa na mesma competência, inclusive saldo negativo e mês sem lançamentos.
-- Pagamento pendente, atrasado, quitado e reaberto; consulta por mês e paginação.
-- Valor inválido, categorias vazias, data impossível e conteúdo hostil em campos de texto.
-- Importação e exportação CSV com vírgulas, ponto e vírgula, acentos e fórmulas de planilha.
-- Ausência de acesso indevido a lançamentos de outra empresa: **ainda falta isolamento multiusuário**.
+```bash
+dotnet build ControladorGastos/ControladorGastos.csproj
+python -m pip install -r relatorios/requirements.txt
+python -m pytest relatorios/tests -q
+python relatorios/gerar_relatorio.py relatorios/exemplo-pj.csv --saida relatorio-pj.html
+```
 
-## Riscos e próximos incrementos
+O cliente Swift tem testes próprios: `cd swift-client && swift test` em ambiente Swift compatível.
 
-A API é somente local e o módulo PJ usa `auxiliar-pj.db`, separado do banco residencial. O sistema ainda exige autenticação por usuário, autorização por empresa, migrations, backup, testes de integração e política de retenção. Planejar cadastro de CNPJ e documentos fiscais somente após validar o modelo de dados com especialista contábil. Não usar em produção com dados financeiros reais nesta fase.
+## Migrações e regressão
+
+As migrações EF Core são aplicadas na inicialização para ambos os bancos. O arquivo [test_sqlite_upgrade.py](../tests/test_sqlite_upgrade.py) é utilizado no CI para verificar atualização de instalações legadas. Faça backup com a aplicação parada antes de atualizar; confira contagens, totais e exportações depois. Nunca apague arquivos de dados para resolver falhas.
+
+O [workflow principal](../.github/workflows/ci.yml) executa build, auditoria NuGet, teste de migração, verificações básicas de API/autenticação e testes Python. O [workflow Swift](../.github/workflows/swift-client.yml) valida o cliente. Consulte os resultados no GitHub Actions; a presença de testes não garante segurança de produção.
+
+## Pendências antes de produção
+
+- Cobertura de integração mais ampla para operações PJ, paginação e exportação.
+- Identidade individual e autorização por empresa e recurso; não existe isolamento multiusuário.
+- Backup/recuperação automatizados, auditoria, HTTPS, revisão de segurança e retenção de dados.
+- Validação contábil antes de qualquer cadastro fiscal, cálculo de tributos ou emissão de notas.
+
+Para testes de regressão adicionais: `node --test tests/frontend.test.cjs` e `python tests/test_backup_sqlite.py`. A suíte de integração PJ roda no CI com a API local. Consulte [backup](BACKUP_E_RECUPERACAO.md) e [revisão de segurança](REVISAO_SEGURANCA.md).
