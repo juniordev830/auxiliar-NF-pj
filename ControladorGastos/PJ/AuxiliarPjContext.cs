@@ -7,6 +7,8 @@ public sealed class AuxiliarPjContext(DbContextOptions<AuxiliarPjContext> option
 {
     public DbSet<LancamentoPj> Lancamentos => Set<LancamentoPj>();
 
+    public DbSet<LancamentoHistorico> Historico => Set<LancamentoHistorico>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var entity = modelBuilder.Entity<LancamentoPj>();
@@ -16,6 +18,11 @@ public sealed class AuxiliarPjContext(DbContextOptions<AuxiliarPjContext> option
         entity.Property(x => x.Contraparte).HasMaxLength(120);
         entity.Property(x => x.Valor).HasPrecision(14, 2);
         entity.HasIndex(x => x.Competencia);
+        entity.HasQueryFilter(x => x.ExcluidoEm == null);
+        entity.Property(x => x.Versao).IsConcurrencyToken();
+        var audit = modelBuilder.Entity<LancamentoHistorico>();
+        audit.HasIndex(x => x.LancamentoId);
+        audit.Property(x => x.Acao).HasMaxLength(20).IsRequired();
     }
 }
 
@@ -30,5 +37,17 @@ public sealed class LancamentoPj
     public DateTime Competencia { get; set; }
     public DateTime? Vencimento { get; set; }
     public DateTime? DataPagamento { get; set; }
+    public DateTime? ExcluidoEm { get; set; }
+    public int Versao { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class LancamentoHistorico
+{
+    public int Id { get; set; }
+    public int LancamentoId { get; set; }
+    public string Acao { get; set; } = string.Empty;
+    public string? Antes { get; set; }
+    public string? Depois { get; set; }
+    public DateTime OcorridoEm { get; set; } = DateTime.UtcNow;
 }
