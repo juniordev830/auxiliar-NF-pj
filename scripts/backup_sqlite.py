@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sqlite3
@@ -10,6 +11,26 @@ import tempfile
 from contextlib import closing
 
 NAMES = ("controlador-gastos.db", "auxiliar-pj.db")
+REQUIRED_TABLES = {NAMES[0]: {"Pessoas", "Transacoes"}, NAMES[1]: {"Lancamentos"}}
+MAX_MANIFEST_BYTES = 16 * 1024
+
+def read_manifest(path):
+    if not path.is_file() or path.is_symlink():
+        raise ValueError("Manifesto ausente ou inválido.")
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_MANIFEST_BYTES + 1)
+    if len(raw) > MAX_MANIFEST_BYTES:
+        raise ValueError("Manifesto excede o limite permitido.")
+    manifest = json.loads(raw)
+    if not isinstance(manifest, dict) or type(manifest.get("version")) is not int or manifest["version"] != 1:
+        raise ValueError("Versão do manifesto inválida.")
+    files = manifest.get("files")
+    if not isinstance(files, dict) or set(files) != set(NAMES):
+        raise ValueError("Arquivos do manifesto inválidos.")
+    if any(not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
+           for value in files.values()):
+        raise ValueError("Checksum inválido no manifesto.")
+    return manifest
 
 def digest(path):
     sha = hashlib.sha256()
@@ -18,20 +39,27 @@ def digest(path):
             sha.update(chunk)
     return sha.hexdigest()
 
-def check(path):
+def check(path, expected=None):
     if not path.is_file() or path.is_symlink():
         raise ValueError(f"Arquivo SQLite ausente ou inválido: {path}")
     with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
         if db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
             raise ValueError(f"Falha de integridade: {path}")
+        if expected is not None:
+            tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+            missing = REQUIRED_TABLES[expected] - tables
+            if missing:
+                raise ValueError(f"Esquema incompatível com {expected}: faltam {', '.join(sorted(missing))}.")
+            if db.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                raise ValueError(f"Falha de integridade referencial: {path}")
 
 def copy_sqlite(src, dst):
-    check(src)
+    check(src, dst.name)
     with closing(sqlite3.connect(src.resolve().as_uri() + "?mode=ro", uri=True, timeout=5)) as source:
         with closing(sqlite3.connect(dst)) as target:
             source.backup(target)
     os.chmod(dst, 0o600)
-    check(dst)
+    check(dst, dst.name)
 
 def prepare(destination):
     destination = Path(destination).absolute()
@@ -73,22 +101,18 @@ def backup(residential, pj, destination):
 def restore(source, destination):
     source = Path(source)
     manifest_path = source / "manifest.json"
-    if manifest_path.is_symlink():
-        raise ValueError("Manifesto não pode ser link simbólico.")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("version") != 1 or set(manifest.get("files", {})) != set(NAMES):
-        raise ValueError("Manifesto de backup inválido.")
+    manifest = read_manifest(manifest_path)
     destination, temp = prepare(destination)
     try:
         for name in NAMES:
             src = source / name
-            check(src)
+            check(src, name)
             # Hash the copied bytes, not an earlier version of a mutable source.
             shutil.copyfile(src, temp / name)
             os.chmod(temp / name, 0o600)
             if digest(temp / name) != manifest["files"][name]:
                 raise ValueError(f"Checksum inválido: {name}")
-            check(temp / name)
+            check(temp / name, name)
         publish(temp, destination)
     finally:
         shutil.rmtree(temp, ignore_errors=True)
