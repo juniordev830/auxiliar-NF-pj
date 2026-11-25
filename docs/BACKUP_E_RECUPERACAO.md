@@ -16,3 +16,5 @@ O comando utiliza a API de backup SQLite, verifica integridade e grava manifesto
 Para usar bancos recuperados: mantenha a API parada, preserve os arquivos originais e configure ConnectionStrings__DefaultConnection e ConnectionStrings__AuxiliarPj para os caminhos recuperados (Data Source=...). Inicie e confira totais com dados de teste. Não execute rollback destrutivo de migrações.
 
 Guarde backups fora do Git, em armazenamento protegido e preferencialmente criptografado. SHA-256 detecta corrupção acidental, não autentica um manifesto alterado por terceiro. O script não criptografa dados, não agenda backups e não controla se a aplicação está em execução. No Windows configure permissões do diretório pelo sistema. Faça testes periódicos de recuperação.
+
+O utilitário também valida a estrutura mínima dos bancos (Pessoas/Transacoes no residencial, Lancamentos no PJ), a integridade referencial e o formato do manifesto. Isso detecta arquivos trocados ou manifestos inválidos, mas não garante compatibilidade de todas as colunas ou migrações.
