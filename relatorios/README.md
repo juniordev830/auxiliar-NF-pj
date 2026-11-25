@@ -37,3 +37,5 @@ A distribuição por categoria representa valores brutos, não resultado líquid
 - Execute os testes com `python -m pytest relatorios/tests -q`.
 
 Os totais e a tabela financeira usam centavos inteiros; valores fracionários, tipos inválidos e categorias ausentes são rejeitados e descritos no HTML. Datas ausentes ou inválidas são excluídas do gráfico temporal e sinalizadas. Os gráficos usam projeção numérica para visualização; a formatação monetária dos totais é pt-BR.
+
+A CLI aceita somente arquivos CSV e XLSX e exige saída com extensão .html. O HTML é gravado em arquivo temporário no mesmo diretório e publicado por substituição atômica; se a publicação falhar, o relatório anterior é preservado.
