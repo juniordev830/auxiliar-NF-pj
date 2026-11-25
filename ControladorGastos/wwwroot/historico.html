@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>Auxiliar PJ | Histórico</title>
+<link rel="stylesheet" href="/css/styles.css">
+<script src="/js/utils.js" defer></script><script src="/js/historico-utils.js" defer></script><script src="/js/historico.js" defer></script>
+</head><body><main class="shell">
+<header class="top"><div class="brand"><div class="mark">PJ</div><div><h1>Histórico de alterações</h1><p class="sub">Consulta de criação, edição, pagamento e exclusão</p></div></div><a href="/" class="btn ghost">Voltar</a></header>
+<section class="panel" style="margin-top:24px">
+<div class="controls"><label for="id">ID do lançamento</label><input id="id" type="number" step="1" min="1" max="2147483647" required>
+<label for="token">Token de leitura</label><input id="token" type="password" autocomplete="off">
+<button type="button" class="btn primary" id="access">Acessar</button><button type="button" class="btn ghost" id="logout">Sair</button><button type="button" class="btn" id="refresh">Consultar</button></div>
+<p id="status" role="status" aria-live="polite" class="hint">Informe o ID e o token de leitura.</p></section>
+<section class="panel" id="results" style="margin-top:16px" hidden>
+<h2>Alterações registradas</h2><div id="entries"></div>
+<div class="controls"><button id="previous" type="button" class="btn ghost">Anterior</button><span id="page" class="muted"></span><button id="next" type="button" class="btn ghost">Próxima</button></div></section>
+<footer class="footer">O histórico registra alterações após a migração e não identifica usuários individuais. Não é um registro contábil imutável.</footer>
+</main></body></html>
