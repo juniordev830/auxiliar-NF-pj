@@ -18,6 +18,7 @@ from pathlib import Path
 from datetime import datetime
 import base64
 from io import BytesIO
+from tempfile import NamedTemporaryFile
 
 # ============================================================
 # CONFIGURAÇÕES — ajuste aqui para a sua planilha
@@ -275,6 +276,22 @@ def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> 
     return html
 
 
+def salvar_relatorio(saida: Path, html: str) -> None:
+    """Substitui o relatório somente depois de gravar o HTML completo."""
+    destino = saida.resolve()
+    temporario = None
+    try:
+        with NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=destino.parent, delete=False
+        ) as arquivo:
+            temporario = Path(arquivo.name)
+            arquivo.write(html)
+        temporario.replace(destino)
+    finally:
+        if temporario is not None:
+            temporario.unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gera relatório HTML a partir de CSV exportado ou planilha Excel.")
     parser.add_argument("arquivo", nargs="?", default=ARQUIVO_ENTRADA, help="Caminho do arquivo .csv ou .xlsx")
@@ -311,7 +328,7 @@ def main():
     html = montar_html(df, imgs, origem=str(caminho))
 
     try:
-        saida.write_text(html, encoding="utf-8")
+        salvar_relatorio(saida, html)
     except OSError as error:
         parser.error(str(error))
     print(f"Relatório salvo em: {args.saida}")
