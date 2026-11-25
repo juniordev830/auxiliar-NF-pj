@@ -158,10 +158,12 @@ def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> 
     blocos_grafico = ""
     for titulo, img_b64 in imgs.items():
         if img_b64:
+            titulo_seguro = escape(str(titulo), quote=True)
+            imagem_segura = escape(str(img_b64), quote=True)
             blocos_grafico += f"""
             <div class="grafico">
-                <h2>{titulo}</h2>
-                <img src="data:image/png;base64,{img_b64}" alt="{titulo}">
+                <h2>{titulo_seguro}</h2>
+                <img src="data:image/png;base64,{imagem_segura}" alt="{titulo_seguro}">
             </div>
             """
 
@@ -194,15 +196,15 @@ def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> 
     {resumo_pj}
 
     <div class="cards">
-        <div class="card"><div class="valor">{total:,.2f}</div><div class="label">Volume total ({COLUNA_VALOR})</div></div>
-        <div class="card"><div class="valor">{media:,.2f}</div><div class="label">Média ({COLUNA_VALOR})</div></div>
+        <div class="card"><div class="valor">{total:,.2f}</div><div class="label">Volume total ({escape(COLUNA_VALOR)})</div></div>
+        <div class="card"><div class="valor">{media:,.2f}</div><div class="label">Média ({escape(COLUNA_VALOR)})</div></div>
         <div class="card"><div class="valor">{qtd_registros}</div><div class="label">Registros</div></div>
         <div class="card"><div class="valor">{escape(str(top_categoria))}</div><div class="label">Top {escape(COLUNA_CATEGORIA)}</div></div>
     </div>
 
     {blocos_grafico}
 
-    <h2>Tabela resumo por {COLUNA_CATEGORIA}</h2>
+    <h2>Tabela resumo por {escape(COLUNA_CATEGORIA)}</h2>
     {tabela_resumo}
 
     <footer>Relatório gerencial automatizado. Não substitui contabilidade, apuração tributária ou documentos fiscais.</footer>
