@@ -10,6 +10,8 @@ import warnings
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 import pandas as pd
 import argparse
+import os
+import tempfile
 from html import escape
 import matplotlib
 matplotlib.use("Agg")  # não precisa de interface gráfica
@@ -275,6 +277,25 @@ def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> 
     return html
 
 
+def salvar_html(saida: Path, html: str):
+    """Publica o relatório completo ou mantém intacto o arquivo anterior."""
+    saida = Path(saida)
+    temp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=saida.parent,
+            prefix=".relatorio-", suffix=".tmp", delete=False
+        ) as stream:
+            temp = Path(stream.name)
+            stream.write(html)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp, saida)
+    finally:
+        if temp is not None:
+            temp.unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gera relatório HTML a partir de CSV exportado ou planilha Excel.")
     parser.add_argument("arquivo", nargs="?", default=ARQUIVO_ENTRADA, help="Caminho do arquivo .csv ou .xlsx")
@@ -284,19 +305,23 @@ def main():
 
     caminho = Path(args.arquivo)
     saida = Path(args.saida)
-    if not caminho.exists():
-        parser.error(f"Arquivo não encontrado: {caminho}")
-
+    if not caminho.is_file():
+        parser.error(f"Arquivo não encontrado ou inválido: {caminho}")
+    if caminho.suffix.lower() not in (".csv", ".xlsx"):
+        parser.error("Formato de entrada não suportado; use CSV ou XLSX.")
     try:
         if saida.exists() and saida.samefile(caminho):
             parser.error("O arquivo de saída deve ser diferente do arquivo de entrada.")
     except OSError as error:
         parser.error(str(error))
 
+    if saida.suffix.lower() != ".html":
+        parser.error("A saída deve usar a extensão .html.")
+
     print(f"Lendo {caminho} ...")
     try:
         df = carregar_dados(str(caminho), args.aba)
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         parser.error(str(error))
     print(f"{len(df)} linhas carregadas.")
 
@@ -311,7 +336,7 @@ def main():
     html = montar_html(df, imgs, origem=str(caminho))
 
     try:
-        saida.write_text(html, encoding="utf-8")
+        salvar_html(saida, html)
     except OSError as error:
         parser.error(str(error))
     print(f"Relatório salvo em: {args.saida}")
