@@ -98,6 +98,24 @@ def backup(residential, pj, destination):
         shutil.rmtree(temp, ignore_errors=True)
     return destination
 
+def verify(source):
+    """Validate an existing offline backup without publishing or modifying it."""
+    source = Path(source)
+    manifest = read_manifest(source / "manifest.json")
+    for name in NAMES:
+        path = source / name
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"Arquivo de backup ausente ou inválido: {name}")
+        if digest(path) != manifest["files"][name]:
+            raise ValueError(f"Checksum inválido: {name}")
+        # A published backup must stand alone; do not accidentally read live WAL data.
+        for suffix in ("-wal", "-shm", "-journal"):
+            sidecar = Path(str(path) + suffix)
+            if sidecar.exists() or sidecar.is_symlink():
+                raise ValueError(f"Backup contém arquivo auxiliar inesperado: {name}{suffix}")
+        check(path, name)
+    return source
+
 def restore(source, destination):
     source = Path(source)
     manifest_path = source / "manifest.json"
@@ -125,6 +143,8 @@ def main():
     create.add_argument("--residencial", required=True)
     create.add_argument("--pj", required=True)
     create.add_argument("--destino", required=True)
+    validate = sub.add_parser("verify")
+    validate.add_argument("--origem", required=True)
     recover = sub.add_parser("restore")
     recover.add_argument("--origem", required=True)
     recover.add_argument("--destino", required=True)
@@ -132,6 +152,8 @@ def main():
     try:
         if args.command == "backup":
             result = backup(args.residencial, args.pj, args.destino)
+        elif args.command == "verify":
+            result = verify(args.origem)
         else:
             result = restore(args.origem, args.destino)
     except (OSError, ValueError, sqlite3.Error) as error:
