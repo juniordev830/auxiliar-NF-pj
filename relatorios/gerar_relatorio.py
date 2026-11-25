@@ -6,7 +6,8 @@ Execução: python relatorios/gerar_relatorio.py relatorios/exemplo-pj.csv --sai
 Este relatório não calcula impostos e não substitui documentos fiscais.
 """
 
-import math
+import warnings
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 import pandas as pd
 import argparse
 from html import escape
@@ -32,10 +33,40 @@ ARQUIVO_SAIDA = "relatorio-pj.html"
 # ============================================================
 
 
+CENTAVOS = "_valor_centavos"
+
+def centavos(value):
+    """Parse decimal text exactly; reject invalid values or fractional cents."""
+    try:
+        amount = Decimal(str(value).strip())
+        if not amount.is_finite() or abs(amount) > Decimal("100000000"):
+            return None
+        with localcontext() as ctx:
+            ctx.prec = 40
+            scaled = amount * 100
+            return int(scaled) if scaled == scaled.to_integral_value() else None
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+def moeda(value):
+    """Format integer or Decimal cents in Brazilian notation."""
+    with localcontext() as ctx:
+        ctx.prec = 40
+        amount = (Decimal(value) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return "R$ " + f"{amount:,.2f}".translate(str.maketrans(",.", ".,"))
+
+def valores_exatos(df):
+    if CENTAVOS in df:
+        return [int(v) for v in df[CENTAVOS]]
+    values = [centavos(v) for v in df[COLUNA_VALOR]]
+    if any(v is None for v in values):
+        raise ValueError("Valor inválido ou com mais de duas casas decimais.")
+    return values
+
 def carregar_dados(caminho: str, aba) -> pd.DataFrame:
     """Lê CSV da API ou planilha e faz limpeza básica."""
     if Path(caminho).suffix.lower() == ".csv":
-        df = pd.read_csv(caminho, sep=";", encoding="utf-8-sig", decimal=".")
+        df = pd.read_csv(caminho, sep=";", encoding="utf-8-sig", dtype={COLUNA_VALOR: str})
     else:
         df = pd.read_excel(caminho, sheet_name=aba)
 
@@ -44,19 +75,42 @@ def carregar_dados(caminho: str, aba) -> pd.DataFrame:
     if missing:
         raise ValueError(f"Colunas obrigatórias ausentes: {', '.join(missing)}")
 
-    # remove linhas totalmente vazias
-    df = df.dropna(how="all")
-    df[COLUNA_VALOR] = pd.to_numeric(df[COLUNA_VALOR], errors="coerce")
-    df = df.dropna(subset=[COLUNA_CATEGORIA, COLUNA_VALOR])
-    # Exclude +/- infinity: these values survive dropna and corrupt totals/charts.
-    df = df[df[COLUNA_VALOR].map(math.isfinite)]
+    df = df.dropna(how="all").copy()
+    rejected = []
+    valid = []
+    values = []
+    for position, (_, row) in enumerate(df.iterrows(), start=1):
+        value = centavos(row[COLUNA_VALOR])
+        category = row[COLUNA_CATEGORIA]
+        reason = None
+        if pd.isna(category) or not str(category).strip():
+            reason = "categoria ausente"
+        elif value is None:
+            reason = "valor inválido, fora do limite ou fracionário"
+        elif "Tipo" in df.columns:
+            if str(row["Tipo"]).strip().upper() not in ("RECEITA", "DESPESA"):
+                reason = "tipo inválido"
+            elif value <= 0:
+                reason = "valor PJ deve ser positivo"
+        if reason:
+            rejected.append(f"Registro {position}: {reason}")
+        else:
+            valid.append(position - 1)
+            values.append(value)
+    df = df.iloc[valid].copy()
     if df.empty:
-        raise ValueError("A planilha não possui registros válidos após a limpeza.")
-
-    # converte a coluna de data, se existir
+        raise ValueError("A planilha não possui registros válidos após a limpeza. " + "; ".join(rejected[:20]))
+    df[CENTAVOS] = pd.Series(values, index=df.index, dtype=object)
+    # Only charts use the floating-point projection; monetary totals use cents.
+    df[COLUNA_VALOR] = [v / 100 for v in values]
+    invalid_dates = 0
     if COLUNA_DATA and COLUNA_DATA in df.columns:
         df[COLUNA_DATA] = pd.to_datetime(df[COLUNA_DATA], format="mixed", errors="coerce")
-
+        invalid_dates = int(df[COLUNA_DATA].isna().sum())
+    df.attrs["rejected"] = rejected
+    df.attrs["invalid_dates"] = invalid_dates
+    if rejected or invalid_dates:
+        warnings.warn(f"{len(rejected)} registro(s) rejeitado(s); {invalid_dates} data(s) ausente(s)/inválida(s). Consulte o relatório.", UserWarning)
     return df
 
 
@@ -127,41 +181,50 @@ def parse_aba(value: str):
 
 def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> str:
     """Monta o relatório HTML final."""
-    total = df[COLUNA_VALOR].sum()
-    media = df[COLUNA_VALOR].mean()
+    cents = valores_exatos(df)
+    total = sum(cents)
     qtd_registros = len(df)
-    top_categoria = df.groupby(COLUNA_CATEGORIA)[COLUNA_VALOR].sum().idxmax()
+    media = Decimal(total) / qtd_registros
+    groups = {}
+    for category, amount in zip(df[COLUNA_CATEGORIA], cents):
+        groups.setdefault(str(category), []).append(amount)
+    top_categoria = max(groups, key=lambda key: sum(groups[key]))
+    rejected = df.attrs.get("rejected", [])
+    invalid_dates = df.attrs.get("invalid_dates", 0)
+    quality = ""
+    if rejected or invalid_dates:
+        details = "".join(f"<li>{escape(reason)}</li>" for reason in rejected)
+        quality = f"<section><h2>Atenção: qualidade dos dados</h2><p>{len(rejected)} registro(s) rejeitado(s); {invalid_dates} data(s) inválida(s)/ausente(s), não incluída(s) no gráfico temporal.</p><ul>{details}</ul></section>"
 
     resumo_pj = ""
     if "Tipo" in df.columns:
         tipos = df["Tipo"].astype(str).str.strip().str.upper()
-        receitas = df.loc[tipos.eq("RECEITA"), COLUNA_VALOR].sum()
-        despesas = df.loc[tipos.eq("DESPESA"), COLUNA_VALOR].sum()
+        receitas = sum(v for t, v in zip(tipos, cents) if t == "RECEITA")
+        despesas = sum(v for t, v in zip(tipos, cents) if t == "DESPESA")
         saldo = receitas - despesas
         resumo_pj = f"""
         <div class="cards">
-            <div class="card"><div class="valor">R$ {receitas:,.2f}</div><div class="label">Receitas previstas</div></div>
-            <div class="card"><div class="valor">R$ {despesas:,.2f}</div><div class="label">Despesas previstas</div></div>
-            <div class="card"><div class="valor">R$ {saldo:,.2f}</div><div class="label">Saldo previsto</div></div>
+            <div class="card"><div class="valor">{moeda(receitas)}</div><div class="label">Receitas previstas</div></div>
+            <div class="card"><div class="valor">{moeda(despesas)}</div><div class="label">Despesas previstas</div></div>
+            <div class="card"><div class="valor">{moeda(saldo)}</div><div class="label">Saldo previsto</div></div>
         </div>
         """
 
-    tabela_resumo = (
-        df.groupby(COLUNA_CATEGORIA)[COLUNA_VALOR]
-        .agg(["sum", "mean", "count"])
-        .rename(columns={"sum": "Total", "mean": "Média", "count": "Registros"})
-        .sort_values("Total", ascending=False)
-        .round(2)
-        .to_html(classes="tabela")
-    )
+    tabela_resumo = pd.DataFrame([
+        {"Categoria": key, "Total": moeda(sum(items)),
+         "Média": moeda(Decimal(sum(items)) / len(items)), "Registros": len(items)}
+        for key, items in sorted(groups.items(), key=lambda pair: sum(pair[1]), reverse=True)
+    ]).to_html(classes="tabela", index=False, escape=True)
 
     blocos_grafico = ""
     for titulo, img_b64 in imgs.items():
         if img_b64:
+            titulo_seguro = escape(str(titulo), quote=True)
+            imagem_segura = escape(str(img_b64), quote=True)
             blocos_grafico += f"""
             <div class="grafico">
-                <h2>{titulo}</h2>
-                <img src="data:image/png;base64,{img_b64}" alt="{titulo}">
+                <h2>{titulo_seguro}</h2>
+                <img src="data:image/png;base64,{imagem_segura}" alt="{titulo_seguro}">
             </div>
             """
 
@@ -191,18 +254,19 @@ def montar_html(df: pd.DataFrame, imgs: dict, origem: str = ARQUIVO_ENTRADA) -> 
     <h1>Auxiliar PJ — Relatório financeiro</h1>
     <p>Gerado a partir de <b>{escape(str(origem))}</b> em {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
 
+    {quality}
     {resumo_pj}
 
     <div class="cards">
-        <div class="card"><div class="valor">{total:,.2f}</div><div class="label">Volume total ({COLUNA_VALOR})</div></div>
-        <div class="card"><div class="valor">{media:,.2f}</div><div class="label">Média ({COLUNA_VALOR})</div></div>
+        <div class="card"><div class="valor">{moeda(total)}</div><div class="label">Volume total ({escape(COLUNA_VALOR)})</div></div>
+        <div class="card"><div class="valor">{moeda(media)}</div><div class="label">Média ({escape(COLUNA_VALOR)})</div></div>
         <div class="card"><div class="valor">{qtd_registros}</div><div class="label">Registros</div></div>
         <div class="card"><div class="valor">{escape(str(top_categoria))}</div><div class="label">Top {escape(COLUNA_CATEGORIA)}</div></div>
     </div>
 
     {blocos_grafico}
 
-    <h2>Tabela resumo por {COLUNA_CATEGORIA}</h2>
+    <h2>Tabela resumo por {escape(COLUNA_CATEGORIA)}</h2>
     {tabela_resumo}
 
     <footer>Relatório gerencial automatizado. Não substitui contabilidade, apuração tributária ou documentos fiscais.</footer>

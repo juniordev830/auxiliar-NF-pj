@@ -1,0 +1,3 @@
+# Edição e histórico PJ
+
+PUT /api/pj/lancamentos/{id} recebe o mesmo JSON de criação. DELETE aplica exclusão lógica; lançamentos excluídos não aparecem nas consultas, totais ou exportações. GET /api/pj/lancamentos/{id}/historico aceita page e limit e retorna snapshots JSON antes/depois, ação e data UTC. O token leitor tem acesso ao histórico, assim como aos dados financeiros. O histórico começa após a atualização; não reconstrói ações antigas. O token compartilhado não identifica pessoas. A migração cria novas colunas e tabela de histórico; faça backup antes de atualizar. Não execute rollback da migração com dados reais sem plano de recuperação.

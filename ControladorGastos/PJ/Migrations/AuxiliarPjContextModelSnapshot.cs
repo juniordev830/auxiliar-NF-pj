@@ -58,11 +58,26 @@ namespace ControladorGastos.PJ.Migrations
                     b.Property<DateTime?>("Vencimento")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("ExcluidoEm").HasColumnType("TEXT");
+                    b.Property<int>("Versao").IsConcurrencyToken().HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Competencia");
 
                     b.ToTable("Lancamentos");
+                });
+            modelBuilder.Entity("ControladorGastos.PJ.LancamentoHistorico", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<int>("LancamentoId").HasColumnType("INTEGER");
+                    b.Property<string>("Acao").IsRequired().HasMaxLength(20).HasColumnType("TEXT");
+                    b.Property<string>("Antes").HasColumnType("TEXT");
+                    b.Property<string>("Depois").HasColumnType("TEXT");
+                    b.Property<DateTime>("OcorridoEm").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("LancamentoId");
+                    b.ToTable("Historico");
                 });
 #pragma warning restore 612, 618
         }

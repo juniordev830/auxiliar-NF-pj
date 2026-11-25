@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControladorGastos.PJ;
@@ -24,14 +25,19 @@ public static class AuxiliarPjEndpoints
             if (pagina is < 1 or > 100_000 || tamanho is < 1 or > 100)
                 return Results.BadRequest(new { error = "Use page de 1 a 100000 e limit de 1 a 100." });
 
-            var rows = await Filtrar(db, ano, mes, tipo).ToListAsync();
-            var statusNormalizado = status?.Trim().ToUpperInvariant();
-            if (!string.IsNullOrEmpty(statusNormalizado))
-                rows = rows.Where(x => Situacao(x) == statusNormalizado).ToList();
-
-            var total = rows.Count;
-            var items = rows.OrderByDescending(x => x.Competencia).ThenByDescending(x => x.Id)
-                .Skip((pagina - 1) * tamanho).Take(tamanho).Select(Apresentar).ToList();
+            var query = Filtrar(db, ano, mes, tipo);
+            var hoje = DateTime.UtcNow.Date;
+            query = status?.Trim().ToUpperInvariant() switch
+            {
+                "PAGO" => query.Where(x => x.DataPagamento != null),
+                "ATRASADO" => query.Where(x => x.DataPagamento == null && x.Vencimento != null && x.Vencimento < hoje),
+                "PENDENTE" => query.Where(x => x.DataPagamento == null && (x.Vencimento == null || x.Vencimento >= hoje)),
+                _ => query
+            };
+            var total = await query.CountAsync();
+            var rows = await query.OrderByDescending(x => x.Competencia).ThenByDescending(x => x.Id)
+                .Skip((pagina - 1) * tamanho).Take(tamanho).ToListAsync();
+            var items = rows.Select(Apresentar).ToList();
             return Results.Ok(new { items, total, page = pagina, limit = tamanho });
         });
 
@@ -52,7 +58,11 @@ public static class AuxiliarPjEndpoints
                 DataPagamento = input.DataPagamento?.Date
             };
             db.Lancamentos.Add(row);
+            await using var transaction = await db.Database.BeginTransactionAsync();
             await db.SaveChangesAsync();
+            Registrar(db, row, "CRIACAO", null);
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
             return Results.Created($"/api/pj/lancamentos/{row.Id}", Apresentar(row));
         });
 
@@ -61,20 +71,62 @@ public static class AuxiliarPjEndpoints
         {
             if (input.DataPagamento.HasValue && !DataValida(input.DataPagamento.Value))
                 return Results.BadRequest(new { error = "Data do pagamento inválida." });
-            var row = await db.Lancamentos.FindAsync(id);
+            var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
             if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
+            var antes = Snapshot(row);
             row.DataPagamento = input.DataPagamento?.Date;
+            row.Versao++;
+            Registrar(db, row, "PAGAMENTO", antes);
             await db.SaveChangesAsync();
             return Results.Ok(Apresentar(row));
         });
 
         pj.MapDelete("/lancamentos/{id:int}", async Task<IResult> (int id, AuxiliarPjContext db) =>
         {
-            var row = await db.Lancamentos.FindAsync(id);
+            var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
             if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
-            db.Lancamentos.Remove(row);
+            var antes = Snapshot(row);
+            row.ExcluidoEm = DateTime.UtcNow;
+            row.Versao++;
+            Registrar(db, row, "EXCLUSAO", antes);
             await db.SaveChangesAsync();
             return Results.NoContent();
+        });
+
+        pj.MapPut("/lancamentos/{id:int}", async Task<IResult> (
+            int id, LancamentoPjInput input, AuxiliarPjContext db) =>
+        {
+            var erro = ValidarLancamento(input);
+            if (erro is not null) return Results.BadRequest(new { error = erro });
+            var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
+            if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
+            var antes = Snapshot(row);
+            row.Descricao = input.Descricao!.Trim();
+            row.Tipo = input.Tipo!.Trim().ToUpperInvariant();
+            row.Categoria = input.Categoria!.Trim();
+            row.Contraparte = string.IsNullOrWhiteSpace(input.Contraparte) ? null : input.Contraparte.Trim();
+            row.Valor = input.Valor;
+            row.Competencia = input.Competencia.Date;
+            row.Vencimento = input.Vencimento?.Date;
+            row.DataPagamento = input.DataPagamento?.Date;
+            row.Versao++;
+            Registrar(db, row, "EDICAO", antes);
+            await db.SaveChangesAsync();
+            return Results.Ok(Apresentar(row));
+        });
+
+        pj.MapGet("/lancamentos/{id:int}/historico", async Task<IResult> (
+            int id, int? page, int? limit, AuxiliarPjContext db) =>
+        {
+            var pagina = page ?? 1;
+            var tamanho = limit ?? 50;
+            if (pagina is < 1 or > 100_000 || tamanho is < 1 or > 100)
+                return Results.BadRequest(new { error = "Paginação inválida." });
+            var query = db.Historico.AsNoTracking().Where(x => x.LancamentoId == id);
+            var total = await query.CountAsync();
+            var items = await query.OrderByDescending(x => x.Id)
+                .Skip((pagina - 1) * tamanho).Take(tamanho).ToListAsync();
+            return Results.Ok(new { items, total, page = pagina, limit = tamanho });
         });
 
         pj.MapGet("/resumo", async Task<IResult> (int? ano, int? mes, AuxiliarPjContext db) =>
@@ -146,6 +198,16 @@ public static class AuxiliarPjEndpoints
         });
     }
 
+    private static string Snapshot(LancamentoPj row) => JsonSerializer.Serialize(row);
+
+    private static void Registrar(AuxiliarPjContext db, LancamentoPj row, string acao, string? antes)
+    {
+        db.Historico.Add(new LancamentoHistorico
+        {
+            LancamentoId = row.Id, Acao = acao, Antes = antes, Depois = Snapshot(row)
+        });
+    }
+
     private static IQueryable<LancamentoPj> Filtrar(
         AuxiliarPjContext db, int? ano, int? mes, string? tipo)
     {
@@ -209,14 +271,15 @@ public static class AuxiliarPjEndpoints
     {
         row.Id, row.Descricao, row.Tipo, row.Categoria, row.Contraparte,
         row.Valor, row.Competencia, row.Vencimento, row.DataPagamento,
-        Status = Situacao(row), row.CriadoEm
+        Status = Situacao(row), row.CriadoEm, row.Versao
     };
 
     // Evita CSV injection ao abrir textos em aplicativos de planilha.
     private static string EscaparCsv(string value)
     {
         var candidate = value.TrimStart();
-        if (candidate.Length > 0 && "=+-@\t\r".Contains(candidate[0]))
+        if ((candidate.Length > 0 && "=+-@".Contains(candidate[0])) ||
+            (value.Length > 0 && "\t\r\n".Contains(value[0])))
             value = "'" + value;
         return "\"" + value.Replace("\"", "\"\"") + "\"";
     }

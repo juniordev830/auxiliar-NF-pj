@@ -30,3 +30,21 @@ lancamentos-pj.csv
 relatorio-pj.html
 relatorios/exports/
 relatorios/*.html
+
+# Local backups and recovery (contain private financial data)
+backups/
+recuperacao/
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+*.csv
+!relatorios/exemplo-pj.csv
+relatorio-*.html
+__pycache__/
+.pytest_cache/
+.venv/
+swift-client/.build/

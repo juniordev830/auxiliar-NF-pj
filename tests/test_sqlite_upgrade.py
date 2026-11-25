@@ -112,8 +112,11 @@ class LegacyUpgradeTest(unittest.TestCase):
             for database, migration in [(residential, "BaselineResidencial"), (pj, "BaselineAuxiliarPj")]:
                 with closing(sqlite3.connect(database)) as connection:
                     history = connection.execute('SELECT MigrationId FROM "__EFMigrationsHistory"').fetchall()
-                self.assertEqual(len(history), 1)
-                self.assertTrue(history[0][0].endswith(migration))
+                expected = 2 if database == pj else 1
+                self.assertEqual(len(history), expected)
+                self.assertTrue(any(row[0].endswith(migration) for row in history))
+                if database == pj:
+                    self.assertTrue(any(row[0].endswith("AuditoriaPj") for row in history))
 
 
 if __name__ == "__main__":
