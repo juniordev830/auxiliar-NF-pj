@@ -20,6 +20,29 @@ def call(path, method="GET", data=None, reader=False):
         return err.code, None
 
 class PjAudit(unittest.TestCase):
+    def test_stale_version_is_rejected(self):
+        data = dict(descricao="Versao CI", tipo="RECEITA", categoria="CI",
+                    valor=1.23, competencia="2026-10-01")
+        status, created = call("/pj/lancamentos", "POST", data)
+        self.assertEqual(status, 201)
+        path = "/pj/lancamentos/" + str(created["id"])
+        status, item = call(path, reader=True)
+        self.assertEqual(status, 200)
+        version = item["versao"]
+        data["versao"] = version
+        data["valor"] = 2.34
+        self.assertEqual(call(path, "PUT", data)[0], 200)
+        self.assertEqual(call(path, "PUT", data)[0], 409)
+        self.assertEqual(call(path + "/pagamento", "PUT", {"versao": version, "dataPagamento": "2026-10-02"})[0], 409)
+        self.assertEqual(call(path + "?versao=" + str(version), "DELETE")[0], 409)
+        status, updated = call(path)
+        self.assertEqual(updated["valor"], 2.34)
+        self.assertEqual(updated["versao"], version + 1)
+        self.assertEqual(call(path + "?versao=" + str(updated["versao"]), "DELETE")[0], 204)
+        self.assertEqual(call(path)[0], 404)
+        status, history = call(path + "/historico")
+        self.assertEqual([x["acao"] for x in history["items"]], ["EXCLUSAO", "EDICAO", "CRIACAO"])
+
     def test_security_headers(self):
         with urlopen("http://127.0.0.1:5000/", timeout=5) as response:
             self.assertIn("script-src 'self'", response.headers["Content-Security-Policy"])
