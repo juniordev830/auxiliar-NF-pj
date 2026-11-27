@@ -16,7 +16,7 @@ Sistema local de gestão financeira para profissionais PJ, freelancers e pequena
 | Relatórios | Conversão de CSV ou XLSX em HTML com indicadores e gráficos |
 | Cliente Swift | Terminal experimental somente leitura para a API residencial |
 
-O painel PJ permite editar lançamentos. A exclusão lógica e a consulta do histórico estão disponíveis pela API. O histórico registra alterações após a migração. O módulo residencial não possui interface web própria.
+Na lista do painel PJ, use **Duplicar** para reaproveitar a descrição, o tipo, a categoria, o cliente ou fornecedor e o valor de um lançamento. A cópia abre com a competência de hoje e com vencimento e pagamento em branco. Revise os campos e clique em **Salvar lançamento** para criar o novo registro. A exclusão lógica e a consulta do histórico estão disponíveis pela API. O histórico registra alterações após a migração. O módulo residencial não possui interface web própria.
 
 ## Tecnologias e arquitetura
 

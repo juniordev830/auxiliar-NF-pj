@@ -37,15 +37,16 @@
         clearTimeout(sessionTimer);
         if (accessToken) sessionTimer = setTimeout(() => logout('Sessão encerrada por inatividade.'), 15 * 60 * 1000);
       }
-      function beginEdit(item) {
-        editId = item.id;
-        $('form-title').textContent = 'Editar lançamento';
+      function openEntryForm(item, mode) {
+        const copying = mode === 'copy';
+        editId = copying ? null : item.id;
+        $('form-title').textContent = copying ? 'Duplicar lançamento' : 'Editar lançamento';
         $('cancel-edit').hidden = false;
         for (const id of ['descricao','tipo','categoria','contraparte','valor'])
           $(id).value = item[id] ?? '';
-        $('competencia').value = (item.competencia || '').slice(0,10);
-        $('vencimento').value = (item.vencimento || '').slice(0,10);
-        $('pagamento').value = (item.dataPagamento || '').slice(0,10);
+        $('competencia').value = copying ? localDate() : (item.competencia || '').slice(0,10);
+        $('vencimento').value = copying ? '' : (item.vencimento || '').slice(0,10);
+        $('pagamento').value = copying ? '' : (item.dataPagamento || '').slice(0,10);
         $('descricao').focus();
       }
       const period = () => { const [ano, mes] = $('periodo').value.split('-'); return {ano, mes}; };
@@ -102,8 +103,11 @@
         action.append(btn);
         const edit = document.createElement('button');
         edit.type = 'button'; edit.className = 'btn small ghost'; edit.textContent = 'Editar';
-        edit.addEventListener('click', () => beginEdit(item));
-        action.append(edit);
+        edit.addEventListener('click', () => openEntryForm(item, 'edit'));
+        const copy = document.createElement('button');
+        copy.type = 'button'; copy.className = 'btn small ghost'; copy.textContent = 'Duplicar';
+        copy.addEventListener('click', () => openEntryForm(item, 'copy'));
+        action.append(edit, copy);
         return tr;
       }
       async function load(){
