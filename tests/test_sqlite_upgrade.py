@@ -183,5 +183,18 @@ class LegacyUpgradeTest(unittest.TestCase):
 
 
 
+    def test_required_individual_mode_never_falls_back_to_shared_tokens(self):
+        env = {
+            **os.environ,
+            "GASTOS_READ_TOKEN": READ_TOKEN,
+            "GASTOS_ADMIN_TOKEN": ADMIN_TOKEN,
+            "GASTOS_REQUIRE_INDIVIDUAL_CREDENTIALS": "true",
+        }
+        result = subprocess.run(["dotnet", str(APP)], cwd=ROOT, env=env,
+                                capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Configure pelo menos uma credencial individual", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
