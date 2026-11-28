@@ -149,6 +149,7 @@ class LegacyUpgradeTest(unittest.TestCase):
                 "GASTOS_READ_TOKEN": READ_TOKEN,
                 "GASTOS_ADMIN_TOKEN": ADMIN_TOKEN,
             }
+            env["GASTOS_CREDENTIAL_REVOCATIONS_DB"] = str(directory / "revocations.db")
             tokens = {}
             for actor, role, expires in (("operador-01", "admin", "2099-01-01T00:00:00Z"),
                                          ("leitor-02", "read", "2099-01-01T00:00:00Z"),
@@ -181,6 +182,31 @@ class LegacyUpgradeTest(unittest.TestCase):
                 self.assertEqual(api(entries, admin)[0], 401)
                 self.assertEqual(api(entries, reader)[0], 200)
 
+
+
+    def test_revocation_database_survives_restoring_older_financial_data(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            directory = Path(scratch)
+            token = "operador-backup." + "x" * 40
+            env = {
+                **os.environ,
+                "ConnectionStrings__DefaultConnection": f"Data Source={directory / 'res.db'}",
+                "ConnectionStrings__AuxiliarPj": f"Data Source={directory / 'current.db'}",
+                "GASTOS_CREDENTIAL_REVOCATIONS_DB": str(directory / "revocations.db"),
+                "GASTOS_CREDENCIAIS__operador-backup__TokenHash": hashlib.sha256(token.encode()).hexdigest(),
+                "GASTOS_CREDENCIAIS__operador-backup__Role": "admin",
+                "GASTOS_CREDENCIAIS__operador-backup__ExpiresAt": "2099-01-01T00:00:00Z",
+            }
+            entries = "/api/pj/lancamentos"
+            with running_api(directory / "first.log", env):
+                self.assertEqual(api(entries, token)[0], 200)
+            older_copy = directory / "older.db"
+            older_copy.write_bytes((directory / "current.db").read_bytes())
+            with running_api(directory / "revoke.log", env):
+                self.assertEqual(api("/api/session/logout", token, method="POST")[0], 204)
+            env["ConnectionStrings__AuxiliarPj"] = f"Data Source={older_copy}"
+            with running_api(directory / "restored.log", env):
+                self.assertEqual(api(entries, token)[0], 401)
 
 
     def test_required_individual_mode_never_falls_back_to_shared_tokens(self):
