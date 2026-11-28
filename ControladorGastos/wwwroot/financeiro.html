@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Auxiliar PJ | Fluxo de caixa e vencimentos</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/utils.js" defer></script>
+  <script src="/js/financeiro-utils.js" defer></script>
+  <script src="/js/financeiro.js" defer></script>
+</head>
+<body><main class="shell">
+<header class="top">
+  <div class="brand"><div class="mark">PJ</div><div><h1>Fluxo de caixa</h1><p class="sub">Movimentações realizadas e compromissos em aberto</p></div></div>
+  <a class="btn ghost" href="/">Voltar aos lançamentos</a>
+</header>
+<section class="panel" style="margin-top:24px">
+  <div class="controls">
+    <label for="token">Token de leitura</label><input id="token" type="password" autocomplete="off">
+    <button type="button" id="access" class="btn primary">Acessar</button>
+    <button type="button" id="logout" class="btn ghost">Sair</button>
+    <label for="month">Mês de pagamento</label><input id="month" type="month" min="2000-01" max="2200-12">
+    <label for="reference">Data de referência</label><input id="reference" type="date" min="2000-01-01" max="2200-12-31">
+    <button type="button" id="refresh" class="btn">Atualizar</button>
+  </div>
+  <p id="status" class="hint" role="status" aria-live="polite">Informe o token de leitura.</p>
+</section>
+<section id="results" hidden>
+  <div class="intro"><h2>Movimentação efetiva do mês</h2></div>
+  <section class="cards">
+    <div class="card"><div class="eyebrow">Receitas recebidas</div><div class="amount positive" id="income"></div></div>
+    <div class="card"><div class="eyebrow">Despesas pagas</div><div class="amount negative" id="expense"></div></div>
+    <div class="card"><div class="eyebrow">Saldo realizado</div><div class="amount" id="balance"></div></div>
+    <div class="card"><div class="eyebrow">Movimentações</div><div class="amount" id="count"></div></div>
+  </section>
+  <article class="panel" style="margin-top:16px"><h2>Movimentação diária</h2>
+    <div class="scroll"><table><thead><tr><th scope="col">Dia</th><th scope="col">Receitas</th><th scope="col">Despesas</th><th scope="col">Saldo</th><th scope="col">Quantidade</th></tr></thead><tbody id="days"></tbody></table></div>
+  </article>
+  <div class="intro"><h2>Contas em aberto — todas as competências</h2></div>
+  <section class="cards">
+    <div class="card"><div class="eyebrow">A receber</div><div class="amount positive" id="receivable"></div></div>
+    <div class="card"><div class="eyebrow">A pagar</div><div class="amount negative" id="payable"></div></div>
+  </section>
+  <article class="panel" style="margin-top:16px"><h2>Faixas de vencimento</h2>
+    <div class="scroll"><table><thead><tr><th scope="col">Prazo</th><th scope="col">A receber</th><th scope="col">A pagar</th><th scope="col">Saldo previsto</th><th scope="col">Quantidade</th></tr></thead><tbody id="buckets"></tbody></table></div>
+  </article>
+</section>
+<footer class="footer">Totais realizados não incluem saldo inicial de conta bancária. Valores em aberto não representam dinheiro já recebido.</footer>
+</main></body></html>
