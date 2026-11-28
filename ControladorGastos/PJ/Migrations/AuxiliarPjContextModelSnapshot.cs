@@ -73,11 +73,25 @@ namespace ControladorGastos.PJ.Migrations
                     b.Property<int>("LancamentoId").HasColumnType("INTEGER");
                     b.Property<string>("Acao").IsRequired().HasMaxLength(20).HasColumnType("TEXT");
                     b.Property<string>("Antes").HasColumnType("TEXT");
+                    b.Property<string>("Responsavel")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Depois").HasColumnType("TEXT");
                     b.Property<DateTime>("OcorridoEm").HasColumnType("TEXT");
                     b.HasKey("Id");
                     b.HasIndex("LancamentoId");
                     b.ToTable("Historico");
+                });
+            modelBuilder.Entity("ControladorGastos.PJ.RevokedCredential", b =>
+                {
+                    b.Property<string>("Digest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Digest");
+
+                    b.ToTable("RevokedCredentials");
                 });
 #pragma warning restore 612, 618
         }

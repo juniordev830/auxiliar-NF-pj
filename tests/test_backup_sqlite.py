@@ -27,6 +27,19 @@ class BackupTest(unittest.TestCase):
                 backup(*dbs, saved)
             with self.assertRaises(ValueError):
                 backup(dbs[0], dbs[0], root / "same")
+            sidecar = saved / (NAMES[0] + "-wal")
+            sidecar.touch()
+            with self.assertRaisesRegex(ValueError, "auxiliar SQLite inesperado"):
+                restore(saved, root / "unexpected-sidecar")
+            self.assertFalse((root / "unexpected-sidecar").exists())
+            sidecar.unlink()
+            manifest = saved / "manifest.json"
+            manifest_bytes = manifest.read_bytes()
+            manifest.write_bytes(b" " * 4097)
+            with self.assertRaisesRegex(ValueError, "4 KiB"):
+                restore(saved, root / "oversized-manifest")
+            self.assertFalse((root / "oversized-manifest").exists())
+            manifest.write_bytes(manifest_bytes)
             # Modify a valid SQLite database: integrity passes but checksum fails.
             with closing(sqlite3.connect(saved / NAMES[0])) as db, db:
                 db.execute("UPDATE sample SET value=999")

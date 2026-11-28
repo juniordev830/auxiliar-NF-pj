@@ -41,7 +41,7 @@ public static class AuxiliarPjEndpoints
             return Results.Ok(new { items, total, page = pagina, limit = tamanho });
         });
 
-        pj.MapPost("/lancamentos", async Task<IResult> (LancamentoPjInput input, AuxiliarPjContext db) =>
+        pj.MapPost("/lancamentos", async Task<IResult> (LancamentoPjInput input, AuxiliarPjContext db, HttpContext http) =>
         {
             var erro = ValidarLancamento(input);
             if (erro is not null) return Results.BadRequest(new { error = erro });
@@ -60,14 +60,14 @@ public static class AuxiliarPjEndpoints
             db.Lancamentos.Add(row);
             await using var transaction = await db.Database.BeginTransactionAsync();
             await db.SaveChangesAsync();
-            Registrar(db, row, "CRIACAO", null);
+            Registrar(db, http, row, "CRIACAO", null);
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
             return Results.Created($"/api/pj/lancamentos/{row.Id}", Apresentar(row));
         });
 
         pj.MapPut("/lancamentos/{id:int}/pagamento", async Task<IResult> (
-            int id, PagamentoPjInput input, AuxiliarPjContext db) =>
+            int id, PagamentoPjInput input, AuxiliarPjContext db, HttpContext http) =>
         {
             if (input.DataPagamento.HasValue && !DataValida(input.DataPagamento.Value))
                 return Results.BadRequest(new { error = "Data do pagamento inválida." });
@@ -76,25 +76,25 @@ public static class AuxiliarPjEndpoints
             var antes = Snapshot(row);
             row.DataPagamento = input.DataPagamento?.Date;
             row.Versao++;
-            Registrar(db, row, "PAGAMENTO", antes);
+            Registrar(db, http, row, "PAGAMENTO", antes);
             await db.SaveChangesAsync();
             return Results.Ok(Apresentar(row));
         });
 
-        pj.MapDelete("/lancamentos/{id:int}", async Task<IResult> (int id, AuxiliarPjContext db) =>
+        pj.MapDelete("/lancamentos/{id:int}", async Task<IResult> (int id, AuxiliarPjContext db, HttpContext http) =>
         {
             var row = await db.Lancamentos.SingleOrDefaultAsync(x => x.Id == id);
             if (row is null) return Results.NotFound(new { error = "Lançamento não encontrado." });
             var antes = Snapshot(row);
             row.ExcluidoEm = DateTime.UtcNow;
             row.Versao++;
-            Registrar(db, row, "EXCLUSAO", antes);
+            Registrar(db, http, row, "EXCLUSAO", antes);
             await db.SaveChangesAsync();
             return Results.NoContent();
         });
 
         pj.MapPut("/lancamentos/{id:int}", async Task<IResult> (
-            int id, LancamentoPjInput input, AuxiliarPjContext db) =>
+            int id, LancamentoPjInput input, AuxiliarPjContext db, HttpContext http) =>
         {
             var erro = ValidarLancamento(input);
             if (erro is not null) return Results.BadRequest(new { error = erro });
@@ -110,7 +110,7 @@ public static class AuxiliarPjEndpoints
             row.Vencimento = input.Vencimento?.Date;
             row.DataPagamento = input.DataPagamento?.Date;
             row.Versao++;
-            Registrar(db, row, "EDICAO", antes);
+            Registrar(db, http, row, "EDICAO", antes);
             await db.SaveChangesAsync();
             return Results.Ok(Apresentar(row));
         });
@@ -200,11 +200,12 @@ public static class AuxiliarPjEndpoints
 
     private static string Snapshot(LancamentoPj row) => JsonSerializer.Serialize(row);
 
-    private static void Registrar(AuxiliarPjContext db, LancamentoPj row, string acao, string? antes)
+    private static void Registrar(AuxiliarPjContext db, HttpContext http, LancamentoPj row, string acao, string? antes)
     {
         db.Historico.Add(new LancamentoHistorico
         {
-            LancamentoId = row.Id, Acao = acao, Antes = antes, Depois = Snapshot(row)
+            LancamentoId = row.Id, Acao = acao, Antes = antes, Depois = Snapshot(row),
+            Responsavel = http.Items[ApiCredentials.ActorItem] as string
         });
     }
 
