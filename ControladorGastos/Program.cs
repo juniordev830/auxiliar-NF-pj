@@ -14,6 +14,11 @@ builder.Services.AddDbContext<AuxiliarPjContext>(options =>
         ?? "Data Source=auxiliar-pj.db"));
 
 var individualCredentials = new ApiCredentials(builder.Configuration);
+if (!individualCredentials.IsConfigured &&
+    builder.Configuration.GetValue<bool>("GASTOS_REQUIRE_INDIVIDUAL_CREDENTIALS"))
+{
+    throw new InvalidOperationException("Configure pelo menos uma credencial individual em GASTOS_CREDENCIAIS.");
+}
 var readToken = builder.Configuration["GASTOS_READ_TOKEN"];
 var adminToken = builder.Configuration["GASTOS_ADMIN_TOKEN"];
 if (!individualCredentials.IsConfigured && (
