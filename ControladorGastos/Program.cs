@@ -13,11 +13,10 @@ builder.Services.AddDbContext<AuxiliarPjContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("AuxiliarPj")
         ?? "Data Source=auxiliar-pj.db"));
 
-// Tokens obrigatórios para impedir acesso não autenticado; não substituem contas por usuário.
+var individualCredentials = new ApiCredentials(builder.Configuration);
 var readToken = builder.Configuration["GASTOS_READ_TOKEN"];
 var adminToken = builder.Configuration["GASTOS_ADMIN_TOKEN"];
-var tokenMode = !string.IsNullOrEmpty(readToken) || !string.IsNullOrEmpty(adminToken);
-if (!tokenMode || (
+if (!individualCredentials.IsConfigured && (
     string.IsNullOrWhiteSpace(readToken) ||
     string.IsNullOrWhiteSpace(adminToken) ||
     Encoding.UTF8.GetByteCount(readToken) < 32 ||
@@ -25,7 +24,7 @@ if (!tokenMode || (
     string.Equals(readToken, adminToken, StringComparison.Ordinal)))
 {
     throw new InvalidOperationException(
-        "Configure GASTOS_READ_TOKEN e GASTOS_ADMIN_TOKEN diferentes, com ao menos 32 bytes cada.");
+        "Configure GASTOS_READ_TOKEN e GASTOS_ADMIN_TOKEN diferentes, com ao menos 32 bytes cada, ou configure credenciais individuais.");
 }
 
 static bool TokenMatches(string? provided, string expected)
@@ -58,42 +57,59 @@ app.Use(async (http, next) =>
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-if (tokenMode)
+app.Use(async (context, next) =>
 {
-    app.Use(async (context, next) =>
+    if (!context.Request.Path.StartsWithSegments("/api") ||
+        context.Request.Path.Equals("/api/health", StringComparison.OrdinalIgnoreCase))
     {
-        if (!context.Request.Path.StartsWithSegments("/api") ||
-            context.Request.Path.Equals("/api/health", StringComparison.OrdinalIgnoreCase))
-        {
-            await next(context);
-            return;
-        }
-
-        var authHeader = context.Request.Headers.Authorization.ToString();
-        var bearer = authHeader.StartsWith("Bearer ", StringComparison.Ordinal)
-            ? authHeader["Bearer ".Length..] : null;
-        var isAdmin = TokenMatches(bearer, adminToken!);
-        var isReader = TokenMatches(bearer, readToken!);
-        if (!isAdmin && !isReader)
-        {
-            context.Response.Headers["WWW-Authenticate"] = "Bearer";
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsJsonAsync(new { error = "Token de acesso ausente ou inválido." });
-            return;
-        }
-
-        if (!isAdmin && !HttpMethods.IsGet(context.Request.Method) &&
-            !HttpMethods.IsHead(context.Request.Method))
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsJsonAsync(new { error = "Operação exige token de administração." });
-            return;
-        }
-
         await next(context);
-    });
-}
+        return;
+    }
 
+    var headers = context.Request.Headers.Authorization;
+    var authHeader = headers.Count == 1 ? headers[0] : null;
+    var bearer = authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
+        ? authHeader["Bearer ".Length..] : null;
+    var logout = ApiCredentials.IsLogout(context.Request);
+    bool isAdmin, isReader;
+    if (individualCredentials.IsConfigured)
+    {
+        var db = context.RequestServices.GetRequiredService<AuxiliarPjContext>();
+        var credential = await individualCredentials.Authenticate(bearer, db, context.RequestAborted);
+        if (credential is not null && logout)
+        {
+            await ApiCredentials.Revoke(credential, db, context.RequestAborted);
+            context.Response.StatusCode = StatusCodes.Status204NoContent;
+            return;
+        }
+
+        isAdmin = credential?.CanWrite == true;
+        isReader = credential is not null;
+        if (credential is not null) context.Items[ApiCredentials.ActorItem] = credential.UserId;
+    }
+    else
+    {
+        isAdmin = TokenMatches(bearer, adminToken!);
+        isReader = TokenMatches(bearer, readToken!);
+    }
+
+    if (!isAdmin && !isReader)
+    {
+        context.Response.Headers["WWW-Authenticate"] = "Bearer";
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await context.Response.WriteAsJsonAsync(new { error = "Token de acesso ausente ou inválido." });
+        return;
+    }
+
+    if (!isAdmin && !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsJsonAsync(new { error = "Operação exige permissão de administração." });
+        return;
+    }
+
+    await next(context);
+});
 
 using (var scope = app.Services.CreateScope())
 {

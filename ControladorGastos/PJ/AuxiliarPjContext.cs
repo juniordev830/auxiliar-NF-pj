@@ -9,6 +9,8 @@ public sealed class AuxiliarPjContext(DbContextOptions<AuxiliarPjContext> option
 
     public DbSet<LancamentoHistorico> Historico => Set<LancamentoHistorico>();
 
+    public DbSet<RevokedCredential> RevokedCredentials => Set<RevokedCredential>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var entity = modelBuilder.Entity<LancamentoPj>();
@@ -23,6 +25,10 @@ public sealed class AuxiliarPjContext(DbContextOptions<AuxiliarPjContext> option
         var audit = modelBuilder.Entity<LancamentoHistorico>();
         audit.HasIndex(x => x.LancamentoId);
         audit.Property(x => x.Acao).HasMaxLength(20).IsRequired();
+        audit.Property(x => x.Responsavel).HasMaxLength(64);
+        var revoked = modelBuilder.Entity<RevokedCredential>();
+        revoked.HasKey(x => x.Digest);
+        revoked.Property(x => x.Digest).HasMaxLength(64);
     }
 }
 
@@ -47,7 +53,14 @@ public sealed class LancamentoHistorico
     public int Id { get; set; }
     public int LancamentoId { get; set; }
     public string Acao { get; set; } = string.Empty;
+    public string? Responsavel { get; set; }
     public string? Antes { get; set; }
     public string? Depois { get; set; }
     public DateTime OcorridoEm { get; set; } = DateTime.UtcNow;
+}
+
+
+public sealed class RevokedCredential
+{
+    public string Digest { get; set; } = string.Empty;
 }
