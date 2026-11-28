@@ -13,8 +13,17 @@ internal sealed class ApiCredentials
     internal const string ActorItem = "Gastos.Actor";
     private readonly Dictionary<string, ApiCredential> credentials = new(StringComparer.Ordinal);
 
+    private readonly CredentialRevocations? revocations;
+
     public ApiCredentials(IConfiguration config)
     {
+        var path = config["GASTOS_CREDENTIAL_REVOCATIONS_DB"];
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            if (!Path.IsPathFullyQualified(path))
+                throw new InvalidOperationException("Use um caminho absoluto para o banco de revogações.");
+            revocations = new CredentialRevocations(path);
+        }
         foreach (var entry in config.GetSection("GASTOS_CREDENCIAIS").GetChildren())
         {
             var id = entry.Key;
@@ -34,6 +43,9 @@ internal sealed class ApiCredentials
 
     public bool IsConfigured => credentials.Count > 0;
 
+    public Task InitializeRevocations(AuxiliarPjContext db) =>
+        IsConfigured && revocations is not null ? revocations.Initialize(db) : Task.CompletedTask;
+
     public async Task<ApiCredential?> Authenticate(string? token, AuxiliarPjContext db, CancellationToken cancellation)
     {
         if (token is null || token.Length > 1024) return null;
@@ -45,16 +57,18 @@ internal sealed class ApiCredentials
             return null;
 
         var hash = Convert.ToHexString(credential.Hash);
+        if (revocations is not null && await revocations.Contains(hash, cancellation)) return null;
         return await db.RevokedCredentials.AnyAsync(x => x.Digest == hash, cancellation) ? null : credential;
     }
 
     public static bool IsLogout(HttpRequest request) =>
         HttpMethods.IsPost(request.Method) && request.Path.Equals(LogoutPath, StringComparison.OrdinalIgnoreCase);
 
-    public static Task<int> Revoke(ApiCredential credential, AuxiliarPjContext db, CancellationToken cancellation)
+    public async Task Revoke(ApiCredential credential, AuxiliarPjContext db, CancellationToken cancellation)
     {
         var hash = Convert.ToHexString(credential.Hash);
-        return db.Database.ExecuteSqlInterpolatedAsync(
+        if (revocations is not null) await revocations.Add(hash, cancellation);
+        await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT OR IGNORE INTO RevokedCredentials (Digest) VALUES ({hash})", cancellation);
     }
 }

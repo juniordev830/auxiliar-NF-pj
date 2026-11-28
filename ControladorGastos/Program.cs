@@ -83,7 +83,7 @@ app.Use(async (context, next) =>
         var credential = await individualCredentials.Authenticate(bearer, db, context.RequestAborted);
         if (credential is not null && logout)
         {
-            await ApiCredentials.Revoke(credential, db, context.RequestAborted);
+            await individualCredentials.Revoke(credential, db, context.RequestAborted);
             context.Response.StatusCode = StatusCodes.Status204NoContent;
             return;
         }
@@ -122,6 +122,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
     var pj = scope.ServiceProvider.GetRequiredService<AuxiliarPjContext>();
     pj.Database.Migrate();
+    await individualCredentials.InitializeRevocations(pj);
 }
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));

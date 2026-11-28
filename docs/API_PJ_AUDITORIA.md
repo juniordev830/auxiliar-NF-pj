@@ -11,3 +11,7 @@ Para cada pessoa, gere um segredo aleatório de pelo menos 32 bytes, codifique-o
 - `GASTOS_CREDENCIAIS__operador-01__ExpiresAt` no formato `AAAA-MM-DDTHH:mm:ssZ`
 
 Envie o token completo como Bearer. O papel `read` permite consultas, e `admin` também permite alterações. A presença de credenciais individuais desativa os tokens compartilhados. Em implantações que exigem autenticação individual, configure `GASTOS_REQUIRE_INDIVIDUAL_CREDENTIALS=true` para impedir que uma configuração vazia volte ao modo de tokens compartilhados. O cliente pode revogar sua credencial com `POST /api/session/logout`. Para revogar administrativamente, retire a entrada correspondente da configuração e reinicie o serviço. Para rotacionar, gere outro segredo com o mesmo identificador. O histórico dos lançamentos PJ inclui `responsavel` para alterações feitas com credenciais individuais.
+
+### Revogações fora do backup financeiro
+
+Configure `GASTOS_CREDENTIAL_REVOCATIONS_DB` com um caminho absoluto em um volume privado e persistente, separado dos bancos financeiros. O serviço importa revogações preexistentes no início e registra as novas nesse arquivo e no banco PJ. Ao restaurar dados financeiros, mantenha o mesmo arquivo de revogações ativo. Se o arquivo for perdido, preservado apenas em uma cópia antiga ou substituído durante a recuperação, rotacione as credenciais antes de reabrir o serviço.
