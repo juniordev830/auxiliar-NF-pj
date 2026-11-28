@@ -79,6 +79,7 @@ jobs:
           delete_status=$(curl --silent --output /dev/null --write-out '%{http_code}' -X DELETE "http://127.0.0.1:5000/api/pessoas/$person_id")
           test "$delete_status" = "204"
           python3 tests/test_pj_audit.py
+          python3 tests/test_fluxo_caixa.py
           remaining_transactions=$(curl --silent --show-error --fail http://127.0.0.1:5000/api/transacoes)
           python3 -c 'import json,sys; assert json.load(sys.stdin) == [], "Transações deveriam ser removidas junto com a pessoa"' <<< "$remaining_transactions"
 
