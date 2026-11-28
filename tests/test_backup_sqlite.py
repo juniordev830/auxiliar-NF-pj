@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from backup_sqlite import backup, restore, NAMES
+from backup_crypto import generate_key
 
 class BackupTest(unittest.TestCase):
     def test_backup_restore_and_no_overwrite(self):
@@ -46,6 +47,38 @@ class BackupTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 restore(saved, root / "tampered")
             self.assertFalse((root / "tampered").exists())
+
+    def test_encrypted_backup_restore_and_authentication(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dbs = [root / name for name in NAMES]
+            for i, path in enumerate(dbs):
+                with closing(sqlite3.connect(path)) as db, db:
+                    db.execute("CREATE TABLE sample (value TEXT)")
+                    db.execute("INSERT INTO sample VALUES (?)", (f"private-fixture-{i}",))
+            key = generate_key(root / "backup.key")
+            with self.assertRaises(FileExistsError):
+                generate_key(key)
+            saved = backup(*dbs, root / "saved", key_file=key)
+            self.assertEqual({p.name for p in saved.iterdir()}, {name + ".enc" for name in (*NAMES, "manifest.json")})
+            self.assertNotIn(b"SQLite format", (saved / (NAMES[0] + ".enc")).read_bytes())
+            target = restore(saved, root / "good", key_file=key)
+            with closing(sqlite3.connect(target / NAMES[0])) as db:
+                self.assertEqual(db.execute("SELECT value FROM sample").fetchone(), ("private-fixture-0",))
+            with self.assertRaisesRegex(ValueError, "Informe o arquivo de chave"):
+                restore(saved, root / "no-key")
+            wrong_key = generate_key(root / "wrong.key")
+            with self.assertRaisesRegex(ValueError, "Autenticação criptográfica falhou"):
+                restore(saved, root / "wrong-key", key_file=wrong_key)
+            altered = saved / (NAMES[0] + ".enc")
+            content = bytearray(altered.read_bytes())
+            content[-17] ^= 1
+            altered.write_bytes(content)
+            with self.assertRaisesRegex(ValueError, "Autenticação criptográfica falhou"):
+                restore(saved, root / "tampered", key_file=key)
+            self.assertFalse((root / "tampered").exists())
+            self.assertFalse((root / "wrong-key").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
